@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #e87d1e;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #5cb811;
+  --color-secondary-foreground: #ffffff;
+  --color-background: #f8fafc;
+  --color-foreground: #0f172a;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-border: #e2e8f0;
+  --color-card: #ffffff;
+  --color-destructive: #dc2626;
+  --color-ring: #e87d1e;
+  --color-accent: #f1f5f9;
+  --color-accent-foreground: #0f172a;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Typography — Inter (UI/body), Geist Sans (headings), Noto Devanagari (hi) */
+  --font-sans: "Inter Variable", "Inter", "Noto Sans Devanagari", system-ui, sans-serif;
+  --font-heading: "Geist Sans", "Inter Variable", "Inter", system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  --text-xs--line-height: 1rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+  --shadow-elevated: 0 4px 6px -1px rgb(15 23 42 / 0.06), 0 2px 4px -2px rgb(15 23 42 / 0.04);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply antialiased;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground text-sm leading-relaxed;
+    font-family: var(--font-sans);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    @apply tracking-tight text-foreground;
+  }
+
+  h1 {
+    @apply text-2xl font-bold sm:text-3xl;
+  }
+
+  h2 {
+    @apply text-lg font-semibold sm:text-xl;
+  }
+
+  h3 {
+    @apply text-base font-semibold;
+  }
+}
+
+/* Reusable typography utilities (mirror src/lib/typography.ts) */
+@layer utilities {
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+  .surface-panel {
+    @apply rounded-xl border border-border/80 bg-card shadow-card;
+  }
+  .surface-muted {
+    @apply rounded-lg bg-muted/60;
+  }
+
+  .type-display {
+    @apply font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl;
+  }
+  .type-page-title {
+    @apply font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl;
+  }
+  .type-section-title {
+    @apply font-heading text-lg font-semibold tracking-tight text-foreground sm:text-xl;
+  }
+  .type-card-title {
+    @apply font-heading text-sm font-semibold tracking-tight text-foreground;
+  }
+  .type-body {
+    @apply text-sm font-normal leading-relaxed text-foreground;
+  }
+  .type-body-medium {
+    @apply text-sm font-medium leading-snug text-foreground;
+  }
+  .type-muted {
+    @apply text-xs font-normal text-muted-foreground;
+  }
+  .type-table-header {
+    @apply text-sm font-semibold text-muted-foreground normal-case tracking-normal;
+  }
+  .type-table-cell {
+    @apply text-sm font-medium text-foreground;
+  }
+  .type-metric-label {
+    @apply text-sm font-medium text-muted-foreground;
+  }
+  .type-metric-value {
+    @apply font-heading text-2xl font-semibold tracking-tight tabular-nums text-foreground sm:text-[1.75rem];
+  }
+  .type-nav-item {
+    @apply text-sm font-medium leading-none;
+  }
+  .type-form-label {
+    @apply text-xs font-medium leading-none text-foreground;
+  }
+}

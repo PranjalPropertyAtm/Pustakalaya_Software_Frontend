@@ -1,0 +1,11 @@
+export { authService } from "./auth.service";
+export { counsellorsService } from "./counsellors.service";
+export { branchesService } from "./branches.service";
+export { studentsService } from "./students.service";
+export { plansService } from "./plans.service";
+export { seatsService } from "./seats.service";
+export { paymentsService } from "./payments.service";
+export { renewalsService } from "./renewals.service";
+export { reportsService } from "./reports.service";
+export { notificationsService } from "./notifications.service";
+export { receiptsService } from "./receipts.service";
