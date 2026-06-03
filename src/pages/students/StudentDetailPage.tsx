@@ -28,6 +28,7 @@ import { DEFAULT_CURRENCY } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { PaymentHistoryList } from "@/components/payments/PaymentHistoryList";
 import { ChangeStudentSeatDialog } from "@/features/students/ChangeStudentSeatDialog";
+import { EditStudentDialog } from "@/features/students/EditStudentDialog";
 
 function DetailRow({ label, value }: { label: string; value?: React.ReactNode }) {
   if (value === undefined || value === null || value === "") return null;
@@ -106,20 +107,23 @@ export default function StudentDetailPage() {
         title={student.fullName}
         description={student.studentCode ? `Code: ${student.studentCode}` : undefined}
         actions={
-              <Badge
-                variant={
-                  student.status === "active"
-                    ? "success"
-                    : student.status === "inactive" || student.status === "expired"
-                      ? "warning"
-                      : "outline"
-                }
-                className="text-sm"
-              >
-                {student.status === "inactive" || student.status === "expired"
-                  ? "Inactive (renewal due)"
-                  : student.status}
-              </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <EditStudentDialog student={student} onSuccess={refetch} />
+            <Badge
+              variant={
+                student.status === "active"
+                  ? "success"
+                  : student.status === "inactive" || student.status === "expired"
+                    ? "warning"
+                    : "outline"
+              }
+              className="text-sm"
+            >
+              {student.status === "inactive" || student.status === "expired"
+                ? "Inactive (renewal due)"
+                : student.status}
+            </Badge>
+          </div>
         }
       />
 

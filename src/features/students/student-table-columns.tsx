@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -19,6 +19,7 @@ import { cn, formatDate } from "@/lib/utils";
 import { getStudentId, getStudentSeatLabel } from "@/lib/student";
 import { optimizeImageUrl } from "@/lib/image";
 import { toast } from "sonner";
+import { EditStudentDialog } from "@/features/students/EditStudentDialog";
 
 function paymentStatusLabel(student: Student) {
   const s = student.status?.toLowerCase();
@@ -62,9 +63,11 @@ const StudentPhotoCell = memo(function StudentPhotoCell({ student }: { student: 
 const StudentActionsCell = memo(function StudentActionsCell({ student }: { student: Student }) {
   const navigate = useNavigate();
   const id = getStudentId(student);
+  const [editOpen, setEditOpen] = useState(false);
 
   return (
     <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+      <EditStudentDialog student={student} open={editOpen} onOpenChange={setEditOpen} />
       <RowActionMenu
         actions={[
           {
@@ -75,7 +78,7 @@ const StudentActionsCell = memo(function StudentActionsCell({ student }: { stude
           {
             label: "Edit",
             icon: <Pencil className="mr-2 h-4 w-4" />,
-            onClick: () => navigate(`/students/${id}`),
+            onClick: () => setEditOpen(true),
           },
           {
             label: "Renew",

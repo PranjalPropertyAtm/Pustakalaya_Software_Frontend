@@ -60,6 +60,35 @@ export const studentRegistrationSchema = z
 
 export type StudentRegistrationFormValues = z.infer<typeof studentRegistrationSchema>;
 
+export const updateStudentSchema = z.object({
+  fullName: z.string().trim().min(2, "Name is required").max(120),
+  mobileNumber: mobileNumberSchema,
+  parentContact: optionalMobileSchema,
+  address: z.string().trim().min(5, "Address is required").max(500),
+  email: z.string().trim().email().optional().or(z.literal("")),
+  notes: z.string().trim().max(1000).optional(),
+});
+
+export type UpdateStudentFormValues = z.infer<typeof updateStudentSchema>;
+
+export function studentToUpdateFormValues(student: {
+  fullName: string;
+  mobileNumber: string;
+  parentContact?: string;
+  address?: string;
+  email?: string | null;
+  notes?: string;
+}): UpdateStudentFormValues {
+  return {
+    fullName: student.fullName,
+    mobileNumber: student.mobileNumber,
+    parentContact: student.parentContact ?? "",
+    address: student.address ?? "",
+    email: student.email ?? "",
+    notes: student.notes ?? "",
+  };
+}
+
 /** Shared defaults — keep in sync with schema (especially collectPaymentNow). */
 export function createStudentRegistrationDefaultValues(
   branchId = ""

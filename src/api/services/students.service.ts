@@ -16,6 +16,8 @@ export const studentsService = {
     unwrap<Student>(apiClient.post(endpoints.students, formData)),
   update: (id: string, body: Record<string, unknown>) =>
     unwrap<Student>(apiClient.patch(endpoints.student(id), body)),
+  updateMedia: (id: string, formData: FormData) =>
+    unwrap<Student>(apiClient.patch(endpoints.studentMedia(id), formData)),
   changeSeat: (id: string, body: { seatId: string }) =>
     unwrap<Student>(apiClient.patch(endpoints.studentSeat(id), body)),
 };
