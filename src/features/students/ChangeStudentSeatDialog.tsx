@@ -88,8 +88,8 @@ export function ChangeStudentSeatDialog({ student, onSuccess }: ChangeStudentSea
           Change seat
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex w-[calc(100vw-1.5rem)] max-w-2xl max-h-[min(90dvh,calc(100vh-2rem))] flex-col gap-4 overflow-hidden p-6">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Change seat</DialogTitle>
           <DialogDescription>
             {student.fullName}
@@ -99,7 +99,7 @@ export function ChangeStudentSeatDialog({ student, onSuccess }: ChangeStudentSea
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
           <SeatLegend />
           {seatsLoading ? (
             <LoadingState />
@@ -112,11 +112,12 @@ export function ChangeStudentSeatDialog({ student, onSuccess }: ChangeStudentSea
               items={availability ?? []}
               selectedSeatId={selectedSeatId}
               onSelect={setSelectedSeatId}
+              gridMaxHeightClass="max-h-[min(32dvh,240px)]"
             />
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Cancel
           </Button>

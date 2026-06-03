@@ -13,6 +13,8 @@ interface SeatGridProps {
   selectableSeatIds?: string[];
   shiftCode?: string;
   planName?: string;
+  /** Max height of the scrollable seat map area (Tailwind class). */
+  gridMaxHeightClass?: string;
 }
 
 const statusStyles = {
@@ -33,6 +35,7 @@ export function SeatGrid({
   selectableSeatIds,
   shiftCode,
   planName,
+  gridMaxHeightClass = "max-h-[min(65vh,600px)]",
 }: SeatGridProps) {
   const [zoom, setZoom] = useState(1);
   const selectableSeatIdsSet = new Set((selectableSeatIds ?? []).map(String));
@@ -74,7 +77,12 @@ export function SeatGrid({
         </div>
       </div>
 
-      <div className="overflow-auto rounded-xl border border-border/80 bg-muted/20 p-4 max-h-[min(65vh,600px)]">
+      <div
+        className={cn(
+          "overflow-auto rounded-xl border border-border/80 bg-muted/20 p-4",
+          gridMaxHeightClass
+        )}
+      >
         <div
           className="grid gap-2 transition-all duration-200"
           style={{

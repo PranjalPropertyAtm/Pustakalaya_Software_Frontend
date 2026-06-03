@@ -11,10 +11,13 @@ export interface BulkMapSeatPlanPayload {
   seatNumbers?: string[];
   allowedShiftCodes?: ("A" | "B")[];
   isEnabled?: boolean;
+  /** Disable this plan on seats outside the mapped range/numbers (default on for range). */
+  restrictToRange?: boolean;
 }
 
 export interface BulkMapSeatPlanResult {
   mapped: number;
+  unmapped?: number;
   branchId: string;
   planId: string;
   planName?: string;

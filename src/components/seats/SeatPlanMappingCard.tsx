@@ -25,6 +25,7 @@ export function SeatPlanMappingCard({ branchId, totalSeats }: SeatPlanMappingCar
   const [toSeat, setToSeat] = useState(totalSeats ? String(totalSeats) : "");
   const [shiftA, setShiftA] = useState(true);
   const [shiftB, setShiftB] = useState(true);
+  const [restrictToRange, setRestrictToRange] = useState(true);
 
   const { data: plans } = useQuery({
     queryKey: queryKeys.plans.list({}),
@@ -53,11 +54,18 @@ export function SeatPlanMappingCard({ branchId, totalSeats }: SeatPlanMappingCar
           ],
         }),
         isEnabled: true,
+        ...(!mapAll && { restrictToRange }),
       };
       return seatsService.bulkMapPlan(payload);
     },
     onSuccess: (result) => {
-      toast.success(`${result.mapped} seat(s) mapped to ${result.planName ?? "plan"}`);
+      const unmapped =
+        result.unmapped && result.unmapped > 0
+          ? `; ${result.unmapped} seat(s) removed from this plan outside the range`
+          : "";
+      toast.success(
+        `${result.mapped} seat(s) mapped to ${result.planName ?? "plan"}${unmapped}`
+      );
       queryClient.invalidateQueries({ queryKey: ["seats"] });
     },
     onError: (err) =>
@@ -113,6 +121,15 @@ export function SeatPlanMappingCard({ branchId, totalSeats }: SeatPlanMappingCar
               <Label>To seat</Label>
               <Input type="number" min={1} value={toSeat} onChange={(e) => setToSeat(e.target.value)} />
             </div>
+            <label className="flex items-center gap-2 pb-2 cursor-pointer text-sm max-w-xs">
+              <input
+                type="checkbox"
+                className="rounded border-input"
+                checked={restrictToRange}
+                onChange={(e) => setRestrictToRange(e.target.checked)}
+              />
+              Only this range for plan (unmap seats outside)
+            </label>
           </>
         )}
 

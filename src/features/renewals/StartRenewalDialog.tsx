@@ -125,8 +125,8 @@ export function StartRenewalDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-w-3xl gap-0 overflow-hidden p-0">
-        <DialogHeader className="border-b border-border/60 bg-muted/20 px-6 py-4">
+      <DialogContent className="flex w-[calc(100vw-1.5rem)] max-w-2xl max-h-[min(90dvh,calc(100vh-2rem))] flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b border-border/60 bg-muted/20 px-4 py-3 sm:px-6 sm:py-4">
           <DialogTitle>Start renewal</DialogTitle>
           <DialogDescription>
             Choose plan and seat for <span className="font-medium text-foreground">{student.fullName}</span>
@@ -134,7 +134,7 @@ export function StartRenewalDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 px-6 py-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
           {plansLoading && <LoadingState variant="skeleton" />}
 
           {plansError && (
@@ -221,6 +221,7 @@ export function StartRenewalDialog({
                       selectableSeatIds={selectableSeatIds}
                       shiftCode={shiftBased ? shiftCode ?? undefined : undefined}
                       planName={selectedPlan?.name}
+                      gridMaxHeightClass="max-h-[min(32dvh,240px)]"
                     />
                   )}
                 </div>
@@ -229,7 +230,7 @@ export function StartRenewalDialog({
           </div>
         </div>
 
-        <DialogFooter className="border-t border-border/60 bg-muted/10 px-6 py-4">
+        <DialogFooter className="shrink-0 border-t border-border/60 bg-muted/10 px-4 py-3 sm:px-6 sm:py-4">
           <Button variant="outline" onClick={() => setOpen(false)} disabled={startMutation.isPending}>
             Cancel
           </Button>
