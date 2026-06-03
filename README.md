@@ -66,4 +66,11 @@ npm run build
 npm run preview
 ```
 
-Serve `dist/` behind nginx/vercel and set `VITE_API_BASE_URL` to your production API URL.
+Production URLs (also in `.env.production`):
+
+| Service | URL |
+|---------|-----|
+| Frontend | https://pustakalaya-software-frontend.vercel.app/ |
+| Backend API | https://pustakalaya-software-backend.onrender.com/api/v1 |
+
+On Vercel, set the same `VITE_*` variables in **Project → Settings → Environment Variables**, then redeploy.
