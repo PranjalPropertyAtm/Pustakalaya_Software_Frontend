@@ -70,9 +70,11 @@ Production URLs (also in `.env.production`):
 
 | Service | URL |
 |---------|-----|
-| Frontend | https://pustakalaya-software-frontend.vercel.app/ |
-| Backend API | https://pustakalaya-software-backend.onrender.com/api/v1 |
+| Admin (frontend) | https://admin.pustakalaya.co.in/ |
+| API (backend) | https://api.pustakalaya.co.in/api/v1 |
 
-On Vercel, set the same `VITE_*` variables in **Project → Settings → Environment Variables**, then redeploy.
+On Vercel (or your frontend host), set the same `VITE_*` variables in **Project → Settings → Environment Variables**, then redeploy.
+
+On the API host (e.g. Render), set `CORS_ORIGIN` to include `https://admin.pustakalaya.co.in` (see `backend/.env.example`).
 
 `vercel.json` rewrites unknown paths to `index.html` so client-side routes (e.g. `/students`) work on refresh. Without this, the host returns 404 for deep links.
