@@ -74,3 +74,5 @@ Production URLs (also in `.env.production`):
 | Backend API | https://pustakalaya-software-backend.onrender.com/api/v1 |
 
 On Vercel, set the same `VITE_*` variables in **Project → Settings → Environment Variables**, then redeploy.
+
+`vercel.json` rewrites unknown paths to `index.html` so client-side routes (e.g. `/students`) work on refresh. Without this, the host returns 404 for deep links.
