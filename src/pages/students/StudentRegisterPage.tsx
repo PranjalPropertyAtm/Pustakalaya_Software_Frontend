@@ -34,6 +34,7 @@ import { getBranchId } from "@/lib/branch";
 import { PlanSelect } from "@/components/forms/PlanSelect";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { compressImageFile } from "@/lib/compressImage";
 
 export default function StudentRegisterPage() {
   const navigate = useNavigate();
@@ -121,7 +122,56 @@ export default function StudentRegisterPage() {
   });
 
   const registerMutation = useMutation({
-    mutationFn: (fd: FormData) => studentsService.register(fd),
+    mutationFn: async (input: {
+      values: StudentRegistrationFormValues;
+      photo: File | null;
+      idProof: File | null;
+      paymentProof: File | null;
+    }) => {
+      const { values, photo, idProof, paymentProof } = input;
+      const body: Record<string, unknown> = {
+        fullName: values.fullName,
+        mobileNumber: values.mobileNumber,
+        parentContact: values.parentContact || undefined,
+        address: values.address,
+        email: values.email || undefined,
+        branchId: values.branchId,
+        planId: values.planId,
+        seatId: values.seatId,
+        joiningDate: values.joiningDate,
+        startDate: values.startDate,
+        durationMonths: values.durationMonths,
+        recordPaymentNow: values.collectPaymentNow,
+        notes: values.notes || undefined,
+      };
+
+      if (shiftBased && values.shiftCode) body.shiftCode = values.shiftCode;
+      if (!shiftBased && values.preferredStartTime && values.preferredEndTime) {
+        body.preferredStartTime = values.preferredStartTime;
+        body.preferredEndTime = values.preferredEndTime;
+      }
+      if (values.collectPaymentNow) {
+        body.paymentAmount = values.paymentAmount;
+        body.paymentMethod = values.paymentMethod;
+        body.paymentReference = values.paymentReference || undefined;
+        body.currency = values.currency;
+      }
+
+      const result = await studentsService.register(body);
+
+      const studentId = result.student.id ?? result.student._id;
+      if (studentId && (photo || idProof || paymentProof)) {
+        const media = new FormData();
+        if (photo) media.append("photo", photo);
+        if (idProof) media.append("idProof", idProof);
+        if (paymentProof) media.append("paymentProof", paymentProof);
+        void studentsService.uploadRegistrationMedia(studentId, media).catch(() => {
+          toast.warning("Student registered, but photo upload is still processing or failed. Re-upload from student profile if needed.");
+        });
+      }
+
+      return result;
+    },
     onSuccess: () => {
       toast.success("Student registered successfully");
       navigate("/students");
@@ -131,6 +181,21 @@ export default function StudentRegisterPage() {
     },
   });
 
+  const setCompressedFile = async (
+    file: File | null,
+    setter: (file: File | null) => void
+  ) => {
+    if (!file) {
+      setter(null);
+      return;
+    }
+    try {
+      setter(await compressImageFile(file));
+    } catch {
+      setter(file);
+    }
+  };
+
   const onSubmit: SubmitHandler<StudentRegistrationFormValues> = (values) => {
     if (values.collectPaymentNow && !paymentProof) {
       setPaymentProofError("Payment screenshot is required when recording payment now");
@@ -138,23 +203,7 @@ export default function StudentRegisterPage() {
       return;
     }
     setPaymentProofError(null);
-
-    const fd = new FormData();
-    Object.entries(values).forEach(([k, v]) => {
-      if (v === undefined || v === "") return;
-      if (k === "collectPaymentNow") return;
-      if (!shiftBased && k === "shiftCode") return;
-      if (shiftBased && (k === "preferredStartTime" || k === "preferredEndTime")) return;
-      if (!values.collectPaymentNow && (k === "paymentAmount" || k === "paymentMethod" || k === "paymentReference" || k === "currency")) {
-        return;
-      }
-      fd.append(k, String(v));
-    });
-    fd.append("recordPaymentNow", values.collectPaymentNow ? "true" : "false");
-    if (photo) fd.append("photo", photo);
-    if (idProof) fd.append("idProof", idProof);
-    if (values.collectPaymentNow && paymentProof) fd.append("paymentProof", paymentProof);
-    registerMutation.mutate(fd);
+    registerMutation.mutate({ values, photo, idProof, paymentProof });
   };
 
   return (
@@ -281,8 +330,8 @@ export default function StudentRegisterPage() {
             </p>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
-            <FileUploadField label="Profile photo" value={photo} onChange={setPhoto} accept="image/*" />
-            <FileUploadField label="ID proof" value={idProof} onChange={setIdProof} accept="image/*,.pdf" />
+            <FileUploadField label="Profile photo" value={photo} onChange={(file) => void setCompressedFile(file, setPhoto)} accept="image/*" />
+            <FileUploadField label="ID proof" value={idProof} onChange={(file) => void setCompressedFile(file, setIdProof)} accept="image/*,.pdf" />
           </CardContent>
         </Card>
 
@@ -311,10 +360,10 @@ export default function StudentRegisterPage() {
                 <Label htmlFor="collectPaymentNow" className="cursor-pointer font-medium leading-none">
                   Record payment now at registration
                 </Label>
-                <p className="text-sm text-muted-foreground">
+                {/* <p className="text-sm text-muted-foreground">
                   If unchecked, student is registered without a payment entry — collect fee later from
                   Payments.
-                </p>
+                </p> */}
               </div>
             </div>
 
@@ -373,8 +422,10 @@ export default function StudentRegisterPage() {
                   label="Payment screenshot"
                   value={paymentProof}
                   onChange={(file) => {
-                    setPaymentProof(file);
-                    if (file) setPaymentProofError(null);
+                    void setCompressedFile(file, (next) => {
+                      setPaymentProof(next);
+                      if (next) setPaymentProofError(null);
+                    });
                   }}
                   accept="image/*"
                   error={paymentProofError ?? undefined}

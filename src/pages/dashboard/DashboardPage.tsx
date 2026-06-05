@@ -115,7 +115,7 @@ export default function DashboardPage() {
         description={
           isNetworkView
             ? "Metrics and trends across all branches"
-            : `${branchData?.branch.name ?? "Branch"} · ${dateLabel}`
+            : `${branchData?.branch.name ?? "Branch"} `
         }
         actions={
           <Button variant="outline" size="sm" asChild>

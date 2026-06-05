@@ -77,8 +77,7 @@ export function SeatPlanMappingCard({ branchId, totalSeats }: SeatPlanMappingCar
       <CardHeader>
         <CardTitle className="text-base">Plan mapping</CardTitle>
         <CardDescription>
-          Seats are auto-created from branch capacity (1–{totalSeats ?? "N"}). Map which seats are
-          available for each plan.
+          Seats are auto-created from branch capacity (1–{totalSeats ?? "N"}).
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-wrap gap-4 items-end">

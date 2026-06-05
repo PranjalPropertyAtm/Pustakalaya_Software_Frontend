@@ -18,6 +18,7 @@ export const endpoints = {
   students: `${API}/students`,
   student: (id: string) => `${API}/students/${id}`,
   studentMedia: (id: string) => `${API}/students/${id}/media`,
+  studentRegistrationMedia: (id: string) => `${API}/students/${id}/registration-media`,
   studentSeat: (id: string) => `${API}/students/${id}/seat`,
   studentRegistrations: (id: string) => `${API}/students/${id}/registrations`,
   studentReceipts: `${API}/students/receipts`,

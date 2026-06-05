@@ -305,7 +305,7 @@ export default function RenewalsPage() {
     <div className="space-y-6 animate-in fade-in duration-300">
       <PageHeader
         title="Renewals"
-        description="Sort and filter renewals by date, status, and student — same as Payments and Students"
+        description="Sort and filter renewals by date, status, and student"
       />
 
       <Tabs value={tab} onValueChange={setTab}>
