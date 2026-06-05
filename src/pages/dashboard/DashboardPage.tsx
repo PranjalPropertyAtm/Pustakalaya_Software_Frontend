@@ -103,10 +103,10 @@ export default function DashboardPage() {
   if (active.isLoading) return <LoadingState className="min-h-[50vh]" />;
   if (active.isError) return <ErrorState onRetry={() => active.refetch()} />;
 
-  const dateLabel = formatReportDateRange(
-    (isNetworkView ? superData?.dateRange : branchData?.dateRange)?.from,
-    (isNetworkView ? superData?.dateRange : branchData?.dateRange)?.to
-  );
+  // const dateLabel = formatReportDateRange(
+  //   (isNetworkView ? superData?.dateRange : branchData?.dateRange)?.from,
+  //   (isNetworkView ? superData?.dateRange : branchData?.dateRange)?.to
+  // );
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
