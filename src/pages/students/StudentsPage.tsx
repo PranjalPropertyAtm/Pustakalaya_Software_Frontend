@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { Plus, Users, UserCheck, UserX, Clock } from "lucide-react";
 import { studentsService } from "@/api/services";
@@ -71,21 +71,53 @@ export default function StudentsPage() {
     ...listQueryOptions,
   });
 
+  const countParams = useMemo(
+    () => (extra: Record<string, unknown> = {}) => ({
+      ...branchQuery,
+      ...extra,
+      limit: 1,
+      page: 1,
+    }),
+    [branchQuery]
+  );
+
+  const [totalSummary, activeSummary, dueSummary, expiringSummary] = useQueries({
+    queries: [
+      {
+        queryKey: queryKeys.students.list(countParams()),
+        queryFn: () => studentsService.list(countParams()),
+        ...listQueryOptions,
+      },
+      {
+        queryKey: queryKeys.students.list(countParams({ membership: "active" })),
+        queryFn: () => studentsService.list(countParams({ membership: "active" })),
+        ...listQueryOptions,
+      },
+      {
+        queryKey: queryKeys.students.list(countParams({ membership: "inactive" })),
+        queryFn: () => studentsService.list(countParams({ membership: "inactive" })),
+        ...listQueryOptions,
+      },
+      {
+        queryKey: queryKeys.students.list(
+          countParams({ membership: "expiring_soon", expiringInDays: 7 })
+        ),
+        queryFn: () =>
+          studentsService.list(countParams({ membership: "expiring_soon", expiringInDays: 7 })),
+        ...listQueryOptions,
+      },
+    ],
+  });
+
   const students = data?.items ?? [];
   const total = data?.pagination?.total ?? students.length;
 
-  const stats = useMemo(() => {
-    const active = students.filter((s) => s.status === "active").length;
-    const due = students.filter(
-      (s) => s.status === "inactive" || s.status === "expired"
-    ).length;
-    const expiring = students.filter((s) => {
-      if (!s.endDate || s.status !== "active") return false;
-      const days = (new Date(s.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-      return days >= 0 && days <= 7;
-    }).length;
-    return { active, due, expiring, total };
-  }, [students]);
+  const summaryTotals = {
+    total: totalSummary.data?.pagination?.total ?? 0,
+    active: activeSummary.data?.pagination?.total ?? 0,
+    due: dueSummary.data?.pagination?.total ?? 0,
+    expiring: expiringSummary.data?.pagination?.total ?? 0,
+  };
 
   const filterCount = [
     membership !== "all",
@@ -148,16 +180,10 @@ export default function StudentsPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatsCard
-          title="Total (this page)"
-          value={stats.total}
-          subtitle={total != null ? `${total} matching filters` : undefined}
-          icon={Users}
-          accent="primary"
-        />
-        <StatsCard title="Active" value={stats.active} icon={UserCheck} accent="secondary" />
-        <StatsCard title="Renewal due" value={stats.due} icon={UserX} accent="neutral" />
-        <StatsCard title="Expiring ≤7d" value={stats.expiring} icon={Clock} accent="neutral" />
+        <StatsCard title="Total students" value={summaryTotals.total} icon={Users} accent="primary" />
+        <StatsCard title="Active" value={summaryTotals.active} icon={UserCheck} accent="secondary" />
+        <StatsCard title="Renewal due" value={summaryTotals.due} icon={UserX} accent="neutral" />
+        <StatsCard title="Expiring ≤7d" value={summaryTotals.expiring} icon={Clock} accent="neutral" />
       </div>
 
       {isError && <ErrorState onRetry={refetch} />}
