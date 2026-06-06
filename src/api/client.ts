@@ -74,7 +74,9 @@ apiClient.interceptors.response.use(
     }
 
     const message =
-      error.response?.data?.message || error.message || "Something went wrong";
+      status === 429
+        ? "Too many requests. Please wait a moment and try again."
+        : error.response?.data?.message || error.message || "Something went wrong";
     const errors = error.response?.data?.errors;
     throw new ApiClientError(message, status ?? 500, errors);
   }
