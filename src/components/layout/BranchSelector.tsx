@@ -29,10 +29,19 @@ function BranchSelectorInner() {
   const branches = data?.items ?? [];
 
   useEffect(() => {
-    if (!selectedBranchId && branches.length > 0) {
+    if (isLoading) return;
+
+    if (branches.length === 0) {
+      if (selectedBranchId) setSelectedBranchId(null);
+      return;
+    }
+
+    const isValid =
+      selectedBranchId && branches.some((b) => getBranchId(b) === selectedBranchId);
+    if (!isValid) {
       setSelectedBranchId(getBranchId(branches[0]));
     }
-  }, [branches, selectedBranchId, setSelectedBranchId]);
+  }, [branches, selectedBranchId, setSelectedBranchId, isLoading]);
 
   return (
     <div className="flex items-center gap-2">
