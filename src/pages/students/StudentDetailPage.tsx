@@ -91,6 +91,7 @@ export default function StudentDetailPage() {
   const registrations = registrationsData?.items ?? [];
   const payments = paymentsData?.items ?? [];
   const receipts = receiptsData?.items ?? [];
+  const paidReceiptIds = new Set(receipts.map((receipt) => String(receipt.id)));
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -234,7 +235,7 @@ export default function StudentDetailPage() {
             <LoadingState />
           ) : receipts.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Receipts are generated when a student registers or completes a renewal.
+              Receipts appear here after registration or renewal payment is recorded.
             </p>
           ) : (
             receipts.map((r) => (
@@ -317,7 +318,7 @@ export default function StudentDetailPage() {
                     {reg.paymentReference ? ` · Ref: ${reg.paymentReference}` : ""}
                   </p>
                 )}
-                {reg.receiptId && (
+                {reg.receiptId && paidReceiptIds.has(String(reg.receiptId)) && (
                   <ReceiptActions
                     studentId={studentId}
                     receiptId={String(reg.receiptId)}

@@ -339,8 +339,8 @@ export default function StudentRegisterPage() {
           <CardHeader>
             <CardTitle className="text-base">Payment</CardTitle>
             <p className="text-sm text-muted-foreground font-normal mt-1">
-              Fee is always recorded on the registration receipt. Enable the option below only if you are
-              collecting payment right now.
+              A receipt is issued only when payment is recorded. Enable the option below if you are collecting
+              payment during registration.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -434,8 +434,8 @@ export default function StudentRegisterPage() {
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Plan fee will be calculated from branch pricing on the receipt. No payment proof needed until
-                you collect payment separately.
+                Student will be registered without a receipt. Collect payment later from Payments to issue the
+                registration receipt.
               </p>
             )}
 
