@@ -2,10 +2,10 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { Plus, Users, UserCheck, UserX, Clock } from "lucide-react";
-import { studentsService } from "@/api/services";
+import { studentsService, plansService } from "@/api/services";
 import { queryKeys } from "@/lib/queryKeys";
 import { useBranchContext } from "@/hooks/useBranchContext";
-import { listQueryOptions } from "@/lib/queryDefaults";
+import { listQueryOptions, staticQueryOptions } from "@/lib/queryDefaults";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,7 @@ import {
 } from "@/components/data-table";
 import { exportToCsv } from "@/lib/export";
 import { getStudentId } from "@/lib/student";
+import { getPlanId, getPlanLabel } from "@/lib/plan";
 import { STUDENT_STATUSES } from "@/lib/constants";
 import {
   Select,
@@ -42,6 +43,7 @@ export default function StudentsPage() {
   const [search, setSearch] = useState("");
   const [membership, setMembership] = useState<MembershipFilter>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
+  const [planId, setPlanId] = useState("all");
   const [sortBy, setSortBy] = useState<"createdAt" | "endDate" | "fullName">("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [pageIndex, setPageIndex] = useState(0);
@@ -56,6 +58,7 @@ export default function StudentsPage() {
       sortOrder,
     };
     if (search.trim()) params.search = search.trim();
+    if (planId !== "all") params.planId = planId;
     if (membership !== "all") {
       params.membership = membership;
       if (membership === "expiring_soon") params.expiringInDays = 7;
@@ -63,7 +66,15 @@ export default function StudentsPage() {
       params.status = status;
     }
     return params;
-  }, [branchQuery, search, membership, status, sortBy, sortOrder, pageIndex, pageSize]);
+  }, [branchQuery, search, planId, membership, status, sortBy, sortOrder, pageIndex, pageSize]);
+
+  const { data: plansData } = useQuery({
+    queryKey: queryKeys.plans.list({ isActive: "true" }),
+    queryFn: () => plansService.list({ isActive: "true" }),
+    ...staticQueryOptions,
+  });
+
+  const plans = plansData?.items ?? [];
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: queryKeys.students.list(listParams),
@@ -122,6 +133,7 @@ export default function StudentsPage() {
   const filterCount = [
     membership !== "all",
     status !== "all",
+    planId !== "all",
     sortBy !== "createdAt" || sortOrder !== "desc",
   ].filter(Boolean).length;
 
@@ -129,6 +141,7 @@ export default function StudentsPage() {
     setSearch("");
     setMembership("all");
     setStatus("all");
+    setPlanId("all");
     setSortBy("createdAt");
     setSortOrder("desc");
     setPageIndex(0);
@@ -222,6 +235,32 @@ export default function StudentsPage() {
                               <SelectItem value="active">Active only</SelectItem>
                               <SelectItem value="inactive">Period ended</SelectItem>
                               <SelectItem value="expiring_soon">Expiring in 7 days</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Plan</Label>
+                          <Select
+                            value={planId}
+                            onValueChange={(v) => {
+                              setPlanId(v);
+                              setPageIndex(0);
+                            }}
+                          >
+                            <SelectTrigger className="h-8">
+                              <SelectValue placeholder="All plans" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All plans</SelectItem>
+                              {plans.map((plan) => {
+                                const id = getPlanId(plan);
+                                return (
+                                  <SelectItem key={id} value={id}>
+                                    {getPlanLabel(plan)}
+                                    {plan.durationHours != null && ` (${plan.durationHours}h)`}
+                                  </SelectItem>
+                                );
+                              })}
                             </SelectContent>
                           </Select>
                         </div>
