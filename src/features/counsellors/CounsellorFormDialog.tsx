@@ -3,7 +3,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { UserPlus, Pencil } from "lucide-react";
+import { UserPlus, Pencil, Eye, EyeOff } from "lucide-react";
 import { counsellorsService } from "@/api/services";
 import {
   createCounsellorSchema,
@@ -49,6 +49,7 @@ export function CounsellorFormDialog({
   onSuccess,
 }: CounsellorFormDialogProps) {
   const [open, setOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const queryClient = useQueryClient();
   const isEdit = mode === "edit" && counsellor;
 
@@ -75,6 +76,7 @@ export function CounsellorFormDialog({
 
   useEffect(() => {
     if (!open) return;
+    setShowPassword(false);
     if (isEdit && counsellor) {
       editForm.reset({
         fullName: counsellor.fullName,
@@ -172,7 +174,22 @@ export function CounsellorFormDialog({
               error={editForm.formState.errors.password}
               hint="Leave blank to keep current password"
             >
-              <Input type="password" autoComplete="new-password" {...editForm.register("password")} />
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  className="pr-10"
+                  {...editForm.register("password")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </FormField>
             <FormField label="Branch access" error={editForm.formState.errors.branchId} required>
               <Controller
@@ -227,7 +244,22 @@ export function CounsellorFormDialog({
               <Input type="email" autoComplete="off" {...createForm.register("email", trimmedFieldRules)} />
             </FormField>
             <FormField label="Password" error={createForm.formState.errors.password} required>
-              <Input type="password" autoComplete="new-password" {...createForm.register("password")} />
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  className="pr-10"
+                  {...createForm.register("password")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </FormField>
             <FormField label="Branch access" error={createForm.formState.errors.branchId} required>
               <Controller

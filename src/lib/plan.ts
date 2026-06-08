@@ -18,9 +18,8 @@ export function isShiftBasedPlan(
 export function getPlanDurationHours(plan?: Plan | null): number {
   if (!plan) return 0;
   if (plan.durationHours) return plan.durationHours;
-  if (plan.name === "6hr") return 6;
-  if (plan.name === "8hr") return 8;
-  if (plan.name === "12hr") return 12;
+  const match = plan.name?.match(/^(\d+)hr$/);
+  if (match) return Number(match[1]);
   return 0;
 }
 

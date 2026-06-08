@@ -18,7 +18,7 @@ export const STUDENT_STATUSES = [
 ] as const;
 
 /** Must match backend plan.model.js PLAN_NAMES */
-export const PLAN_NAMES = ["6hr", "8hr", "12hr"] as const;
+export const PLAN_NAMES = ["6hr", "8hr", "10hr", "12hr"] as const;
 
 /** Must match backend constants/currency.js */
 export const DEFAULT_CURRENCY = "INR";

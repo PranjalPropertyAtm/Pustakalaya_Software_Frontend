@@ -5,6 +5,7 @@ import { typography } from "@/lib/typography";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import type { EffectivePlanPricingResult } from "@/hooks/usePlanPricing";
+import { ApiClientError } from "@/api/client";
 
 interface PlanPricingDisplayProps {
   planId: string;
@@ -14,11 +15,19 @@ interface PlanPricingDisplayProps {
 export function PlanPricingDisplay({ planId, branchId }: PlanPricingDisplayProps) {
   const { data, isLoading, isError } = useQuery({
     queryKey: queryKeys.plans.effectivePricing(planId, branchId ?? undefined),
-    queryFn: () =>
-      plansService.resolvePricing(
-        planId,
-        branchId ? { branchId } : {}
-      ) as Promise<EffectivePlanPricingResult>,
+    queryFn: async () => {
+      try {
+        return (await plansService.resolvePricing(
+          planId,
+          branchId ? { branchId } : {}
+        )) as EffectivePlanPricingResult;
+      } catch (err) {
+        // New plans (like 10hr) may exist without pricing configured yet.
+        // Treat 404 as "no pricing" instead of surfacing as an error.
+        if (err instanceof ApiClientError && err.statusCode === 404) return null;
+        throw err;
+      }
+    },
     enabled: Boolean(planId),
     staleTime: 30_000,
     retry: false,
