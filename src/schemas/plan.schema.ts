@@ -67,7 +67,7 @@ function validateSixHrShiftFields(
 
 export const sixHrShiftTimingsSchema = sixHrShiftFieldsSchema.superRefine(validateSixHrShiftFields);
 
-export type SixHrShiftFormValues = z.infer<typeof sixHrShiftTimingsSchema>;
+export type SixHrShiftFormValues = z.infer<typeof sixHrShiftFieldsSchema>;
 
 export const createPlanSchema = z
   .object({

@@ -3,15 +3,12 @@ import { FormField } from "@/components/forms/FormField";
 import { Input } from "@/components/ui/input";
 import type { SixHrShiftFormValues } from "@/schemas/plan.schema";
 
-interface SixHrShiftFieldsProps<T extends SixHrShiftFormValues> {
-  register: UseFormRegister<T>;
-  errors: FieldErrors<T>;
+interface SixHrShiftFieldsProps {
+  register: UseFormRegister<SixHrShiftFormValues>;
+  errors: FieldErrors<SixHrShiftFormValues>;
 }
 
-export function SixHrShiftFields<T extends SixHrShiftFormValues>({
-  register,
-  errors,
-}: SixHrShiftFieldsProps<T>) {
+export function SixHrShiftFields({ register, errors }: SixHrShiftFieldsProps) {
   return (
     <div className="space-y-4 rounded-md border border-border/80 bg-muted/20 p-3">
       <p className="text-sm font-medium">Shift timings (6 hours each)</p>

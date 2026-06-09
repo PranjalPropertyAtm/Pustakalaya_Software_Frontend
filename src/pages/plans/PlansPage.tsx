@@ -195,7 +195,7 @@ export default function PlansPage() {
                       />
                     </FormField>
                     {selectedPlanName === "6hr" && (
-                      <SixHrShiftFields<CreatePlanFormValues>
+                      <SixHrShiftFields
                         register={createForm.register}
                         errors={createForm.formState.errors}
                       />
@@ -260,7 +260,7 @@ export default function PlansPage() {
                         )}
                         className="space-y-4"
                       >
-                        <SixHrShiftFields<SixHrShiftFormValues>
+                        <SixHrShiftFields
                           register={shiftEditForm.register}
                           errors={shiftEditForm.formState.errors}
                         />
