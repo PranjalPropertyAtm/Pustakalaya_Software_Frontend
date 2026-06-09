@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { LazyImage } from "@/components/common/LazyImage";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -29,6 +30,9 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { PaymentHistoryList } from "@/components/payments/PaymentHistoryList";
 import { ChangeStudentSeatDialog } from "@/features/students/ChangeStudentSeatDialog";
 import { EditStudentDialog } from "@/features/students/EditStudentDialog";
+import { DeleteStudentDialog } from "@/features/students/DeleteStudentDialog";
+import { useAuthStore } from "@/stores/authStore";
+import { ROLES } from "@/lib/constants";
 
 function DetailRow({ label, value }: { label: string; value?: React.ReactNode }) {
   if (value === undefined || value === null || value === "") return null;
@@ -41,7 +45,10 @@ function DetailRow({ label, value }: { label: string; value?: React.ReactNode })
 }
 
 export default function StudentDetailPage() {
+  const navigate = useNavigate();
   const { studentId = "" } = useParams();
+  const isSuperAdmin = useAuthStore((s) => s.user?.role === ROLES.SUPER_ADMIN);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const {
     data: student,
@@ -110,6 +117,19 @@ export default function StudentDetailPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <EditStudentDialog student={student} onSuccess={refetch} />
+            {isSuperAdmin && (
+              <>
+                <DeleteStudentDialog
+                  student={student}
+                  open={deleteOpen}
+                  onOpenChange={setDeleteOpen}
+                  onDeleted={() => navigate("/students")}
+                />
+                <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+                  Delete
+                </Button>
+              </>
+            )}
             <Badge
               variant={
                 student.status === "active"

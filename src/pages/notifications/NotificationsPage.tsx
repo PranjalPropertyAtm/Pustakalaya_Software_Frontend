@@ -242,7 +242,7 @@ export default function NotificationsPage() {
               onExport={handleExport}
               filters={
                 <DataTableFilters>
-                  <FilterDropdown label="Filters" activeCount={filterCount}>
+                  <FilterDropdown label="Filters" activeCount={filterCount} onClear={clearFilters}>
                     <div className="space-y-3">
                       <div className="space-y-1.5">
                         <Label className="text-xs">Status</Label>
@@ -299,15 +299,6 @@ export default function NotificationsPage() {
                         onFromChange={setDateFrom}
                         onToChange={setDateTo}
                       />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="w-full"
-                        onClick={clearFilters}
-                      >
-                        Clear filters
-                      </Button>
                     </div>
                   </FilterDropdown>
                 </DataTableFilters>

@@ -355,24 +355,17 @@ export default function RenewalsPage() {
                   }
                   filters={
                     <DataTableFilters>
-                      <FilterDropdown label="Filters" activeCount={renewalFilterCount}>
-                        <div className="space-y-3">
-                          <TableDateRangeFilter
-                            from={dateFrom}
-                            to={dateTo}
-                            onFromChange={setDateFrom}
-                            onToChange={setDateTo}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="w-full"
-                            onClick={clearRenewalFilters}
-                          >
-                            Clear filters
-                          </Button>
-                        </div>
+                      <FilterDropdown
+                        label="Filters"
+                        activeCount={renewalFilterCount}
+                        onClear={clearRenewalFilters}
+                      >
+                        <TableDateRangeFilter
+                          from={dateFrom}
+                          to={dateTo}
+                          onFromChange={setDateFrom}
+                          onToChange={setDateTo}
+                        />
                       </FilterDropdown>
                     </DataTableFilters>
                   }
@@ -410,35 +403,28 @@ export default function RenewalsPage() {
                   onExport={exportDue}
                   filters={
                     <DataTableFilters>
-                      <FilterDropdown label="Filters" activeCount={dueFilterCount}>
-                        <div className="space-y-3">
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Due type</Label>
-                            <Select
-                              value={dueTypeFilter}
-                              onValueChange={(v) =>
-                                setDueTypeFilter(v as "all" | "expiring" | "inactive")
-                              }
-                            >
-                              <SelectTrigger className="h-8">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">All</SelectItem>
-                                <SelectItem value="expiring">Expiring soon</SelectItem>
-                                <SelectItem value="inactive">Inactive</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="w-full"
-                            onClick={clearDueFilters}
+                      <FilterDropdown
+                        label="Filters"
+                        activeCount={dueFilterCount}
+                        onClear={clearDueFilters}
+                      >
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Due type</Label>
+                          <Select
+                            value={dueTypeFilter}
+                            onValueChange={(v) =>
+                              setDueTypeFilter(v as "all" | "expiring" | "inactive")
+                            }
                           >
-                            Clear filters
-                          </Button>
+                            <SelectTrigger className="h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All</SelectItem>
+                              <SelectItem value="expiring">Expiring soon</SelectItem>
+                              <SelectItem value="inactive">Inactive</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </FilterDropdown>
                     </DataTableFilters>
@@ -475,7 +461,11 @@ export default function RenewalsPage() {
                   }
                   filters={
                     <DataTableFilters>
-                      <FilterDropdown label="Filters" activeCount={renewalFilterCount}>
+                      <FilterDropdown
+                        label="Filters"
+                        activeCount={renewalFilterCount}
+                        onClear={clearRenewalFilters}
+                      >
                         <div className="space-y-3">
                           <div className="space-y-1.5">
                             <Label className="text-xs">Status</Label>
@@ -501,15 +491,6 @@ export default function RenewalsPage() {
                             onFromChange={setDateFrom}
                             onToChange={setDateTo}
                           />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="w-full"
-                            onClick={clearRenewalFilters}
-                          >
-                            Clear filters
-                          </Button>
                         </div>
                       </FilterDropdown>
                     </DataTableFilters>

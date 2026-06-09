@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   defaultReportDateRange,
   formatReportDateRange,
+  monthlyRegistrationsChartData,
   planDistributionChartData,
   planWiseChartData,
   shiftWiseChartData,
@@ -34,6 +35,7 @@ import {
 import { dashboardQueryOptions } from "@/lib/queryDefaults";
 import {
   getBranchComparisonColumns,
+  getMonthlyRegistrationsColumns,
   getPlanDistributionColumns,
   getPlanWiseColumns,
   getRenewalsDueColumns,
@@ -44,7 +46,9 @@ import { toast } from "sonner";
 import type {
   BranchDashboardResponse,
   BranchOccupancyResponse,
+  BranchRegistrationsByMonthResponse,
   BranchRenewalsDueResponse,
+  RegistrationsByMonthResponse,
   SuperComparisonResponse,
   SuperDashboardResponse,
   SuperPlanDistributionResponse,
@@ -54,12 +58,14 @@ type BranchReportsBundle = {
   dashboard: BranchDashboardResponse;
   occupancy: BranchOccupancyResponse;
   renewalsDue: BranchRenewalsDueResponse;
+  registrationsByMonth: BranchRegistrationsByMonthResponse;
 };
 
 type SuperReportsBundle = {
   dashboard: SuperDashboardResponse;
   comparison: SuperComparisonResponse;
   planDist: SuperPlanDistributionResponse;
+  registrationsByMonth: RegistrationsByMonthResponse;
 };
 
 async function exportRows<T extends Record<string, unknown>>(
@@ -74,6 +80,69 @@ async function exportRows<T extends Record<string, unknown>>(
   await exportToCsv(rows, columns, filename);
 }
 
+function MonthlyRegistrationsSection({
+  data,
+  branchName,
+}: {
+  data: RegistrationsByMonthResponse;
+  branchName?: string;
+}) {
+  const columns = useMemo(() => getMonthlyRegistrationsColumns(), []);
+  const chartData = useMemo(() => monthlyRegistrationsChartData(data.months), [data.months]);
+
+  return (
+    <div className="space-y-6">
+      <StatsCard
+        title="New registrations"
+        value={data.totalRegistrations}
+        subtitle={
+          branchName
+            ? `${branchName} · ${formatReportDateRange(data.dateRange.from, data.dateRange.to)}`
+            : formatReportDateRange(data.dateRange.from, data.dateRange.to)
+        }
+        icon={Users}
+        accent="primary"
+        className="max-w-sm"
+      />
+
+      <DashboardCard
+        title="Registrations by month"
+        description="New students registered each month (renewals not included)"
+      >
+        <LazyBarChart data={chartData} emptyLabel="No registrations in this period" className="h-[280px] w-full" />
+      </DashboardCard>
+
+      <SectionCard noPadding contentClassName="p-4">
+        <DataTable
+          columns={columns}
+          data={data.months}
+          enablePagination
+          pageSize={12}
+          stickyHeader
+          getRowId={(row) => row.monthKey}
+          emptyTitle="No registrations"
+          emptyDescription="Widen the date range above to see monthly counts."
+          toolbar={(table) => (
+            <DataTableToolbar
+              table={table}
+              onExport={() =>
+                void exportRows(
+                  data.months as unknown as Record<string, unknown>[],
+                  [
+                    { key: "monthKey", header: "Month" },
+                    { key: "studentCount", header: "Students registered" },
+                  ],
+                  "monthly-registrations.csv"
+                )
+              }
+            />
+          )}
+        />
+      </SectionCard>
+    </div>
+  );
+}
+
 function SuperReportsView({ data }: { data: SuperReportsBundle }) {
   const comparisonColumns = useMemo(() => getBranchComparisonColumns(), []);
   const planDistColumns = useMemo(() => getPlanDistributionColumns(), []);
@@ -84,6 +153,7 @@ function SuperReportsView({ data }: { data: SuperReportsBundle }) {
         <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="comparison">Branch comparison</TabsTrigger>
         <TabsTrigger value="plans">Plan distribution</TabsTrigger>
+        <TabsTrigger value="registrations">Registrations</TabsTrigger>
       </TabsList>
 
       <TabsContent value="overview" className="space-y-6 mt-4">
@@ -214,6 +284,10 @@ function SuperReportsView({ data }: { data: SuperReportsBundle }) {
           />
         </SectionCard>
       </TabsContent>
+
+      <TabsContent value="registrations" className="space-y-6 mt-4">
+        <MonthlyRegistrationsSection data={data.registrationsByMonth} />
+      </TabsContent>
     </Tabs>
   );
 }
@@ -229,6 +303,7 @@ function BranchReportsView({ data }: { data: BranchReportsBundle }) {
         <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="occupancy">Occupancy</TabsTrigger>
         <TabsTrigger value="renewals">Renewals due</TabsTrigger>
+        <TabsTrigger value="registrations">Registrations</TabsTrigger>
       </TabsList>
 
       <TabsContent value="overview" className="space-y-6 mt-4">
@@ -341,6 +416,13 @@ function BranchReportsView({ data }: { data: BranchReportsBundle }) {
           />
         </SectionCard>
       </TabsContent>
+
+      <TabsContent value="registrations" className="space-y-6 mt-4">
+        <MonthlyRegistrationsSection
+          data={data.registrationsByMonth}
+          branchName={data.dashboard.branch.name}
+        />
+      </TabsContent>
     </Tabs>
   );
 }
@@ -348,7 +430,7 @@ function BranchReportsView({ data }: { data: BranchReportsBundle }) {
 export default function ReportsPage() {
   const { isSuperAdmin, branchQuery, effectiveBranchId } = useBranchContext();
   const isNetworkView = isSuperAdmin && !effectiveBranchId;
-  const defaultRange = useMemo(() => defaultReportDateRange(), []);
+  const defaultRange = useMemo(() => defaultReportDateRange(365), []);
   const [from, setFrom] = useState(defaultRange.from);
   const [to, setTo] = useState(defaultRange.to);
 
@@ -358,12 +440,13 @@ export default function ReportsPage() {
   const branchReports = useQuery({
     queryKey: queryKeys.reports.branchBundle(dateParams),
     queryFn: async (): Promise<BranchReportsBundle> => {
-      const [dashboard, occupancy, renewalsDue] = await Promise.all([
+      const [dashboard, occupancy, renewalsDue, registrationsByMonth] = await Promise.all([
         reportsService.branchDashboard(dateParams) as Promise<BranchDashboardResponse>,
         reportsService.branchOccupancy(branchQuery) as Promise<BranchOccupancyResponse>,
         reportsService.branchRenewalsDue({ ...branchQuery, limit: 100 }) as Promise<BranchRenewalsDueResponse>,
+        reportsService.branchRegistrationsByMonth(dateParams) as Promise<BranchRegistrationsByMonthResponse>,
       ]);
-      return { dashboard, occupancy, renewalsDue };
+      return { dashboard, occupancy, renewalsDue, registrationsByMonth };
     },
     enabled: !!effectiveBranchId,
     ...dashboardQueryOptions,
@@ -372,12 +455,13 @@ export default function ReportsPage() {
   const superReports = useQuery({
     queryKey: queryKeys.reports.superBundle(superDateParams),
     queryFn: async (): Promise<SuperReportsBundle> => {
-      const [dashboard, comparison, planDist] = await Promise.all([
+      const [dashboard, comparison, planDist, registrationsByMonth] = await Promise.all([
         reportsService.superDashboard(superDateParams) as Promise<SuperDashboardResponse>,
         reportsService.superComparison(superDateParams) as Promise<SuperComparisonResponse>,
         reportsService.superPlanDistribution({}) as Promise<SuperPlanDistributionResponse>,
+        reportsService.superRegistrationsByMonth(superDateParams) as Promise<RegistrationsByMonthResponse>,
       ]);
-      return { dashboard, comparison, planDist };
+      return { dashboard, comparison, planDist, registrationsByMonth };
     },
     enabled: isNetworkView,
     ...dashboardQueryOptions,

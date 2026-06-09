@@ -2,10 +2,12 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type {
   BranchComparisonRow,
   ExpiringStudentRow,
+  MonthlyRegistrationRow,
   PlanDistributionItem,
   PlanWiseRow,
   ShiftWiseRow,
 } from "@/types/reports";
+import { formatRegistrationMonth } from "@/lib/reports";
 import { formatDate } from "@/lib/utils";
 
 export function getRenewalsDueColumns(): ColumnDef<ExpiringStudentRow>[] {
@@ -122,6 +124,23 @@ export function getPlanWiseColumns(): ColumnDef<PlanWiseRow>[] {
       header: "Occupancy",
       cell: ({ row }) => (
         <span className="tabular-nums">{row.original.occupancyPercent}%</span>
+      ),
+    },
+  ];
+}
+
+export function getMonthlyRegistrationsColumns(): ColumnDef<MonthlyRegistrationRow>[] {
+  return [
+    {
+      id: "month",
+      header: "Month",
+      cell: ({ row }) => formatRegistrationMonth(row.original.year, row.original.month),
+    },
+    {
+      accessorKey: "studentCount",
+      header: "Students registered",
+      cell: ({ row }) => (
+        <span className="tabular-nums">{row.original.studentCount}</span>
       ),
     },
   ];

@@ -1,4 +1,9 @@
-import type { PlanDistributionItem, PlanWiseRow, ShiftWiseRow } from "@/types/reports";
+import type {
+  MonthlyRegistrationRow,
+  PlanDistributionItem,
+  PlanWiseRow,
+  ShiftWiseRow,
+} from "@/types/reports";
 
 export function defaultReportDateRange(days = 30) {
   const to = new Date();
@@ -47,4 +52,17 @@ export function branchActiveStudentsChartData(
       name: b.branchName,
       value: b.activeStudents,
     }));
+}
+
+export function formatRegistrationMonth(year: number, month: number) {
+  return new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric" }).format(
+    new Date(year, month - 1, 1)
+  );
+}
+
+export function monthlyRegistrationsChartData(rows: MonthlyRegistrationRow[] | undefined) {
+  return (rows ?? []).map((row) => ({
+    name: formatRegistrationMonth(row.year, row.month),
+    value: row.studentCount,
+  }));
 }

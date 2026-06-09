@@ -148,3 +148,20 @@ export interface SuperPlanDistributionResponse {
   totalStudentsWithPlan: number;
   distribution: PlanDistributionItem[];
 }
+
+export interface MonthlyRegistrationRow {
+  year: number;
+  month: number;
+  monthKey: string;
+  studentCount: number;
+}
+
+export interface RegistrationsByMonthResponse {
+  dateRange: DateRange;
+  totalRegistrations: number;
+  months: MonthlyRegistrationRow[];
+}
+
+export interface BranchRegistrationsByMonthResponse extends RegistrationsByMonthResponse {
+  branch: { id: string; name: string };
+}

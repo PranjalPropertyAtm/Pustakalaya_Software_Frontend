@@ -29,4 +29,8 @@ export const studentsService = {
     unwrap<Student>(apiClient.patch(endpoints.studentMedia(id), formData)),
   changeSeat: (id: string, body: { seatId: string }) =>
     unwrap<Student>(apiClient.patch(endpoints.studentSeat(id), body)),
+  remove: (id: string) =>
+    unwrap<{ deletedStudentId: string; studentCode: string; fullName: string }>(
+      apiClient.delete(endpoints.student(id))
+    ),
 };

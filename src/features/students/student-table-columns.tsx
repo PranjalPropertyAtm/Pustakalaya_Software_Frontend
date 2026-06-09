@@ -18,8 +18,10 @@ import { typography } from "@/lib/typography";
 import { cn, formatDate } from "@/lib/utils";
 import { getStudentId, getStudentSeatLabel } from "@/lib/student";
 import { optimizeImageUrl } from "@/lib/image";
-import { toast } from "sonner";
 import { EditStudentDialog } from "@/features/students/EditStudentDialog";
+import { DeleteStudentDialog } from "@/features/students/DeleteStudentDialog";
+import { useAuthStore } from "@/stores/authStore";
+import { ROLES } from "@/lib/constants";
 
 function paymentStatusLabel(student: Student) {
   const s = student.status?.toLowerCase();
@@ -64,10 +66,15 @@ const StudentActionsCell = memo(function StudentActionsCell({ student }: { stude
   const navigate = useNavigate();
   const id = getStudentId(student);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const isSuperAdmin = useAuthStore((s) => s.user?.role === ROLES.SUPER_ADMIN);
 
   return (
     <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
       <EditStudentDialog student={student} open={editOpen} onOpenChange={setEditOpen} />
+      {isSuperAdmin && (
+        <DeleteStudentDialog student={student} open={deleteOpen} onOpenChange={setDeleteOpen} />
+      )}
       <RowActionMenu
         actions={[
           {
@@ -104,14 +111,16 @@ const StudentActionsCell = memo(function StudentActionsCell({ student }: { stude
               navigate(`/payments?tab=list&studentId=${encodeURIComponent(id)}`),
             separatorBefore: true,
           },
-          {
-            label: "Delete",
-            icon: <Trash2 className="mr-2 h-4 w-4" />,
-            destructive: true,
-            disabled: true,
-            onClick: () =>
-              toast.info("Student deletion is not enabled in this release."),
-          },
+          ...(isSuperAdmin
+            ? [
+                {
+                  label: "Delete",
+                  icon: <Trash2 className="mr-2 h-4 w-4" />,
+                  destructive: true,
+                  onClick: () => setDeleteOpen(true),
+                },
+              ]
+            : []),
         ]}
       />
     </div>

@@ -10,10 +10,14 @@ export const reportsService = {
     unwrap(apiClient.get(endpoints.reports.branchRevenue, { params })),
   branchRenewalsDue: (params?: Record<string, unknown>) =>
     unwrap(apiClient.get(endpoints.reports.branchRenewalsDue, { params })),
+  branchRegistrationsByMonth: (params?: Record<string, unknown>) =>
+    unwrap(apiClient.get(endpoints.reports.branchRegistrationsByMonth, { params })),
   superDashboard: (params?: Record<string, unknown>) =>
     unwrap(apiClient.get(endpoints.reports.superDashboard, { params })),
   superComparison: (params?: Record<string, unknown>) =>
     unwrap(apiClient.get(endpoints.reports.superComparison, { params })),
   superPlanDistribution: (params?: Record<string, unknown>) =>
     unwrap(apiClient.get(endpoints.reports.superPlanDistribution, { params })),
+  superRegistrationsByMonth: (params?: Record<string, unknown>) =>
+    unwrap(apiClient.get(endpoints.reports.superRegistrationsByMonth, { params })),
 };

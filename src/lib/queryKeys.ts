@@ -34,10 +34,14 @@ export const queryKeys = {
     branchOccupancy: (params?: Record<string, unknown>) => ["reports", "branch", "occupancy", params] as const,
     branchRevenue: (params?: Record<string, unknown>) => ["reports", "branch", "revenue", params] as const,
     branchRenewalsDue: (params?: Record<string, unknown>) => ["reports", "branch", "renewals-due", params] as const,
+    branchRegistrationsByMonth: (params?: Record<string, unknown>) =>
+      ["reports", "branch", "registrations-by-month", params] as const,
     superDashboard: (params?: Record<string, unknown>) => ["reports", "super", "dashboard", params] as const,
     superComparison: (params?: Record<string, unknown>) => ["reports", "super", "comparison", params] as const,
     superPlanDistribution: (params?: Record<string, unknown>) =>
       ["reports", "super", "plan-distribution", params] as const,
+    superRegistrationsByMonth: (params?: Record<string, unknown>) =>
+      ["reports", "super", "registrations-by-month", params] as const,
     branchBundle: (params?: Record<string, unknown>) => ["reports", "branch", "bundle", params] as const,
     superBundle: (params?: Record<string, unknown>) => ["reports", "super", "bundle", params] as const,
   },

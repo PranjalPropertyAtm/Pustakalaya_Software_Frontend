@@ -13,6 +13,7 @@ import { ErrorState } from "@/components/common/ErrorState";
 import { StatsCard } from "@/components/shared/StatsCard";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
+import { TableDateRangeFilter } from "@/components/shared/TableDateRangeFilter";
 import {
   DataTable,
   DataTableToolbar,
@@ -34,6 +35,14 @@ import { toast } from "sonner";
 
 type MembershipFilter = "all" | "active" | "inactive" | "expiring_soon";
 type StatusFilter = "all" | (typeof STUDENT_STATUSES)[number];
+type StudentDateField = "joiningDate" | "createdAt" | "startDate" | "endDate";
+
+const STUDENT_DATE_FIELD_LABELS: Record<StudentDateField, string> = {
+  joiningDate: "Joining date",
+  createdAt: "Registered on",
+  startDate: "Membership start",
+  endDate: "Membership end",
+};
 
 export default function StudentsPage() {
   const navigate = useNavigate();
@@ -44,6 +53,9 @@ export default function StudentsPage() {
   const [membership, setMembership] = useState<MembershipFilter>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [planId, setPlanId] = useState("all");
+  const [dateField, setDateField] = useState<StudentDateField>("joiningDate");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [sortBy, setSortBy] = useState<"createdAt" | "endDate" | "fullName">("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [pageIndex, setPageIndex] = useState(0);
@@ -59,6 +71,14 @@ export default function StudentsPage() {
     };
     if (search.trim()) params.search = search.trim();
     if (planId !== "all") params.planId = planId;
+    if (dateFrom) {
+      params.from = dateFrom;
+      params.dateField = dateField;
+    }
+    if (dateTo) {
+      params.to = dateTo;
+      params.dateField = dateField;
+    }
     if (membership !== "all") {
       params.membership = membership;
       if (membership === "expiring_soon") params.expiringInDays = 7;
@@ -66,7 +86,7 @@ export default function StudentsPage() {
       params.status = status;
     }
     return params;
-  }, [branchQuery, search, planId, membership, status, sortBy, sortOrder, pageIndex, pageSize]);
+  }, [branchQuery, search, planId, dateField, dateFrom, dateTo, membership, status, sortBy, sortOrder, pageIndex, pageSize]);
 
   const { data: plansData } = useQuery({
     queryKey: queryKeys.plans.list({ isActive: "true" }),
@@ -134,6 +154,8 @@ export default function StudentsPage() {
     membership !== "all",
     status !== "all",
     planId !== "all",
+    dateFrom || dateTo,
+    dateField !== "joiningDate",
     sortBy !== "createdAt" || sortOrder !== "desc",
   ].filter(Boolean).length;
 
@@ -142,6 +164,9 @@ export default function StudentsPage() {
     setMembership("all");
     setStatus("all");
     setPlanId("all");
+    setDateField("joiningDate");
+    setDateFrom("");
+    setDateTo("");
     setSortBy("createdAt");
     setSortOrder("desc");
     setPageIndex(0);
@@ -215,7 +240,7 @@ export default function StudentsPage() {
                 onExport={handleExport}
                 filters={
                   <DataTableFilters>
-                    <FilterDropdown label="Filters" activeCount={filterCount}>
+                    <FilterDropdown label="Filters" activeCount={filterCount} onClear={clearFilters}>
                       <div className="space-y-3">
                         <div className="space-y-1.5">
                           <Label className="text-xs">Membership</Label>
@@ -238,6 +263,41 @@ export default function StudentsPage() {
                             </SelectContent>
                           </Select>
                         </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Date type</Label>
+                          <Select
+                            value={dateField}
+                            onValueChange={(v) => {
+                              setDateField(v as StudentDateField);
+                              setPageIndex(0);
+                            }}
+                          >
+                            <SelectTrigger className="h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(Object.entries(STUDENT_DATE_FIELD_LABELS) as [StudentDateField, string][]).map(
+                                ([value, label]) => (
+                                  <SelectItem key={value} value={value}>
+                                    {label}
+                                  </SelectItem>
+                                )
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <TableDateRangeFilter
+                          from={dateFrom}
+                          to={dateTo}
+                          onFromChange={(v) => {
+                            setDateFrom(v);
+                            setPageIndex(0);
+                          }}
+                          onToChange={(v) => {
+                            setDateTo(v);
+                            setPageIndex(0);
+                          }}
+                        />
                         <div className="space-y-1.5">
                           <Label className="text-xs">Plan</Label>
                           <Select
@@ -321,9 +381,6 @@ export default function StudentsPage() {
                             </Select>
                           </div>
                         </div>
-                        <Button type="button" variant="ghost" size="sm" className="w-full" onClick={clearFilters}>
-                          Clear filters
-                        </Button>
                       </div>
                     </FilterDropdown>
                   </DataTableFilters>

@@ -45,9 +45,11 @@ export const endpoints = {
     branchOccupancy: `${API}/reports/branch/occupancy`,
     branchRevenue: `${API}/reports/branch/revenue`,
     branchRenewalsDue: `${API}/reports/branch/renewals-due`,
+    branchRegistrationsByMonth: `${API}/reports/branch/registrations-by-month`,
     superDashboard: `${API}/reports/super/dashboard`,
     superComparison: `${API}/reports/super/comparison`,
     superPlanDistribution: `${API}/reports/super/plan-distribution`,
+    superRegistrationsByMonth: `${API}/reports/super/registrations-by-month`,
   },
   notifications: {
     list: `${API}/notifications`,
