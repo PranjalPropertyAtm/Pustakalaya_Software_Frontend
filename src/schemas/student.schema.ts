@@ -1,13 +1,41 @@
 import { z } from "zod";
 import { mobileNumberSchema, optionalMobileSchema } from "@/schemas/zodHelpers";
+import { PARENT_CONTACT_RELATIONS, type ParentContactRelation } from "@/lib/constants";
 
 const objectId = z.string().trim().regex(/^[0-9a-fA-F]{24}$/, "Invalid selection");
+
+const parentContactRelationValues = PARENT_CONTACT_RELATIONS.map((item) => item.value) as [
+  (typeof PARENT_CONTACT_RELATIONS)[number]["value"],
+  ...(typeof PARENT_CONTACT_RELATIONS)[number]["value"][],
+];
+
+const parentContactRelationSchema = z.enum(parentContactRelationValues).optional().or(z.literal(""));
+
+const refineParentContactPair = (data: { parentContact?: string; parentContactRelation?: string }, ctx: z.RefinementCtx) => {
+  const contact = data.parentContact?.trim() || "";
+  const relation = data.parentContactRelation?.trim() || "";
+  if (contact && !relation) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["parentContactRelation"],
+      message: "Select whose contact number this is",
+    });
+  }
+  if (relation && !contact) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["parentContact"],
+      message: "Contact number is required",
+    });
+  }
+};
 
 export const studentRegistrationSchema = z
   .object({
     fullName: z.string().trim().min(2, "Name is required").max(120),
     mobileNumber: mobileNumberSchema,
     parentContact: optionalMobileSchema,
+    parentContactRelation: parentContactRelationSchema,
     address: z.string().trim().min(5, "Address is required").max(500),
     email: z.string().trim().email().optional().or(z.literal("")),
     branchId: objectId,
@@ -41,6 +69,7 @@ export const studentRegistrationSchema = z
     path: ["startDate"],
   })
   .superRefine((data, ctx) => {
+    refineParentContactPair(data, ctx);
     if (!data.collectPaymentNow) return;
     if (!data.paymentMethod) {
       ctx.addIssue({
@@ -60,14 +89,17 @@ export const studentRegistrationSchema = z
 
 export type StudentRegistrationFormValues = z.infer<typeof studentRegistrationSchema>;
 
-export const updateStudentSchema = z.object({
-  fullName: z.string().trim().min(2, "Name is required").max(120),
-  mobileNumber: mobileNumberSchema,
-  parentContact: optionalMobileSchema,
-  address: z.string().trim().min(5, "Address is required").max(500),
-  email: z.string().trim().email().optional().or(z.literal("")),
-  notes: z.string().trim().max(1000).optional(),
-});
+export const updateStudentSchema = z
+  .object({
+    fullName: z.string().trim().min(2, "Name is required").max(120),
+    mobileNumber: mobileNumberSchema,
+    parentContact: optionalMobileSchema,
+    parentContactRelation: parentContactRelationSchema,
+    address: z.string().trim().min(5, "Address is required").max(500),
+    email: z.string().trim().email().optional().or(z.literal("")),
+    notes: z.string().trim().max(1000).optional(),
+  })
+  .superRefine(refineParentContactPair);
 
 export type UpdateStudentFormValues = z.infer<typeof updateStudentSchema>;
 
@@ -75,6 +107,7 @@ export function studentToUpdateFormValues(student: {
   fullName: string;
   mobileNumber: string;
   parentContact?: string;
+  parentContactRelation?: string | null;
   address?: string;
   email?: string | null;
   notes?: string;
@@ -83,6 +116,11 @@ export function studentToUpdateFormValues(student: {
     fullName: student.fullName,
     mobileNumber: student.mobileNumber,
     parentContact: student.parentContact ?? "",
+    parentContactRelation: PARENT_CONTACT_RELATIONS.some(
+      (item) => item.value === student.parentContactRelation
+    )
+      ? (student.parentContactRelation as ParentContactRelation)
+      : "",
     address: student.address ?? "",
     email: student.email ?? "",
     notes: student.notes ?? "",

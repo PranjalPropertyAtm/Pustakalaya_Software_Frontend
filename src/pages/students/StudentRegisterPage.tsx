@@ -32,6 +32,11 @@ import { LoadingState } from "@/components/common/LoadingState";
 import { ApiClientError } from "@/api/client";
 import { getBranchId } from "@/lib/branch";
 import { PlanSelect } from "@/components/forms/PlanSelect";
+import {
+  ParentContactFields,
+  type ParentContactFormValues,
+} from "@/components/forms/ParentContactFields";
+import type { Control, FieldErrors, UseFormRegister } from "react-hook-form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { compressImageFile } from "@/lib/compressImage";
@@ -133,6 +138,7 @@ export default function StudentRegisterPage() {
         fullName: values.fullName,
         mobileNumber: values.mobileNumber,
         parentContact: values.parentContact || undefined,
+        parentContactRelation: values.parentContactRelation || undefined,
         address: values.address,
         email: values.email || undefined,
         branchId: values.branchId,
@@ -224,13 +230,11 @@ export default function StudentRegisterPage() {
             >
               <MobileInput {...form.register("mobileNumber", mobileFieldRules)} />
             </FormField>
-            <FormField
-              label="Parent contact"
-              error={form.formState.errors.parentContact}
-              hint="Optional — 10 digits"
-            >
-              <MobileInput {...form.register("parentContact", mobileFieldRules)} />
-            </FormField>
+            <ParentContactFields
+              register={form.register as unknown as UseFormRegister<ParentContactFormValues>}
+              control={form.control as unknown as Control<ParentContactFormValues>}
+              errors={form.formState.errors as FieldErrors<ParentContactFormValues>}
+            />
             <FormField label="Email" error={form.formState.errors.email}>
               <Input type="email" {...form.register("email")} />
             </FormField>

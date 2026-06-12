@@ -28,6 +28,11 @@ import { MobileInput } from "@/components/forms/MobileInput";
 import { mobileFieldRules, trimmedFieldRules } from "@/lib/inputHelpers";
 import { FormField } from "@/components/forms/FormField";
 import { FileUploadField } from "@/components/forms/FileUploadField";
+import {
+  ParentContactFields,
+  type ParentContactFormValues,
+} from "@/components/forms/ParentContactFields";
+import type { Control, FieldErrors, UseFormRegister } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
 import { optimizeImageUrl } from "@/lib/image";
 
@@ -77,6 +82,7 @@ export function EditStudentDialog({
         notes: values.notes?.trim() || undefined,
         email: values.email?.trim() || "",
         parentContact: values.parentContact?.trim() || "",
+        parentContactRelation: values.parentContactRelation || null,
       };
       let updated = await studentsService.update(studentId, body);
       if (photo || idProof) {
@@ -134,9 +140,11 @@ export function EditStudentDialog({
           >
             <MobileInput {...form.register("mobileNumber", mobileFieldRules)} />
           </FormField>
-          <FormField label="Parent contact" error={form.formState.errors.parentContact} hint="Optional">
-            <MobileInput {...form.register("parentContact", mobileFieldRules)} />
-          </FormField>
+          <ParentContactFields
+            register={form.register as unknown as UseFormRegister<ParentContactFormValues>}
+            control={form.control as unknown as Control<ParentContactFormValues>}
+            errors={form.formState.errors as FieldErrors<ParentContactFormValues>}
+          />
           <FormField label="Email" error={form.formState.errors.email} className="sm:col-span-2">
             <Input type="email" {...form.register("email")} />
           </FormField>

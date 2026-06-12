@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { ApiClientError } from "@/api/client";
 import { typography } from "@/lib/typography";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatParentContact } from "@/lib/student";
 import { Loader2, User } from "lucide-react";
 
 interface CollectPaymentFormProps {
@@ -174,8 +175,8 @@ export function CollectPaymentForm({
               </p>
               {summary.student.parentContact && (
                 <p>
-                  <span className="text-muted-foreground">Parent: </span>
-                  {summary.student.parentContact}
+                  <span className="text-muted-foreground">Alternate contact: </span>
+                  {formatParentContact(summary.student)}
                 </p>
               )}
               {summary.student.plan?.name && (

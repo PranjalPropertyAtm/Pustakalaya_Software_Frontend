@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_CURRENCY } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatParentContact } from "@/lib/student";
 import { PaymentHistoryList } from "@/components/payments/PaymentHistoryList";
 import { ChangeStudentSeatDialog } from "@/features/students/ChangeStudentSeatDialog";
 import { EditStudentDialog } from "@/features/students/EditStudentDialog";
@@ -172,7 +173,7 @@ export default function StudentDetailPage() {
           </CardHeader>
           <CardContent>
             <DetailRow label="Mobile" value={student.mobileNumber} />
-            <DetailRow label="Parent contact" value={student.parentContact} />
+            <DetailRow label="Alternate contact" value={formatParentContact(student)} />
             <DetailRow label="Email" value={student.email} />
             <DetailRow
               label="Address"
