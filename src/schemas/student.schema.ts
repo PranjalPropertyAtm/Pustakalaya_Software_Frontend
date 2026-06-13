@@ -11,9 +11,13 @@ const parentContactRelationValues = PARENT_CONTACT_RELATIONS.map((item) => item.
 
 const parentContactRelationSchema = z.enum(parentContactRelationValues).optional().or(z.literal(""));
 
-const refineParentContactPair = (data: { parentContact?: string; parentContactRelation?: string }, ctx: z.RefinementCtx) => {
+const refineParentContactPair = (
+  data: { parentContact?: string; parentContactRelation?: string; parentContactName?: string },
+  ctx: z.RefinementCtx
+) => {
   const contact = data.parentContact?.trim() || "";
   const relation = data.parentContactRelation?.trim() || "";
+  const name = data.parentContactName?.trim() || "";
   if (contact && !relation) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -28,6 +32,13 @@ const refineParentContactPair = (data: { parentContact?: string; parentContactRe
       message: "Contact number is required",
     });
   }
+  if (relation && !name) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["parentContactName"],
+      message: "Contact person name is required",
+    });
+  }
 };
 
 export const studentRegistrationSchema = z
@@ -36,6 +47,7 @@ export const studentRegistrationSchema = z
     mobileNumber: mobileNumberSchema,
     parentContact: optionalMobileSchema,
     parentContactRelation: parentContactRelationSchema,
+    parentContactName: z.string().trim().max(120).optional().or(z.literal("")),
     address: z.string().trim().min(5, "Address is required").max(500),
     email: z.string().trim().email().optional().or(z.literal("")),
     branchId: objectId,
@@ -95,6 +107,7 @@ export const updateStudentSchema = z
     mobileNumber: mobileNumberSchema,
     parentContact: optionalMobileSchema,
     parentContactRelation: parentContactRelationSchema,
+    parentContactName: z.string().trim().max(120).optional().or(z.literal("")),
     address: z.string().trim().min(5, "Address is required").max(500),
     email: z.string().trim().email().optional().or(z.literal("")),
     notes: z.string().trim().max(1000).optional(),
@@ -108,6 +121,7 @@ export function studentToUpdateFormValues(student: {
   mobileNumber: string;
   parentContact?: string;
   parentContactRelation?: string | null;
+  parentContactName?: string;
   address?: string;
   email?: string | null;
   notes?: string;
@@ -121,6 +135,7 @@ export function studentToUpdateFormValues(student: {
     )
       ? (student.parentContactRelation as ParentContactRelation)
       : "",
+    parentContactName: student.parentContactName ?? "",
     address: student.address ?? "",
     email: student.email ?? "",
     notes: student.notes ?? "",

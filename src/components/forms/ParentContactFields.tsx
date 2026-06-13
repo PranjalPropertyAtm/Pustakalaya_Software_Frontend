@@ -1,8 +1,9 @@
-import type { Control, FieldErrors, UseFormRegister } from "react-hook-form";
+import { useWatch, type Control, type FieldErrors, type UseFormRegister } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import { FormField } from "@/components/forms/FormField";
 import { MobileInput } from "@/components/forms/MobileInput";
-import { mobileFieldRules } from "@/lib/inputHelpers";
+import { Input } from "@/components/ui/input";
+import { mobileFieldRules, trimmedFieldRules } from "@/lib/inputHelpers";
 import { PARENT_CONTACT_RELATIONS, type ParentContactRelation } from "@/lib/constants";
 import {
   Select,
@@ -15,6 +16,7 @@ import {
 export type ParentContactFormValues = {
   parentContact?: string;
   parentContactRelation?: ParentContactRelation | "";
+  parentContactName?: string;
 };
 
 interface ParentContactFieldsProps {
@@ -30,42 +32,63 @@ export function ParentContactFields({
   errors,
   className,
 }: ParentContactFieldsProps) {
+  const relation = useWatch({ control, name: "parentContactRelation" });
+
   return (
-    <div className={className ?? "sm:col-span-2 grid gap-4 sm:grid-cols-2"}>
-      <FormField
-        label="Alternate contact person"
-        error={errors.parentContactRelation}
-        hint="Whose number is this? e.g. father, mother, guardian"
-      >
-        <Controller
-          control={control}
-          name="parentContactRelation"
-          render={({ field }) => (
-            <Select
-              value={field.value || ""}
-              onValueChange={(value) => field.onChange(value || "")}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select relation" />
-              </SelectTrigger>
-              <SelectContent>
-                {PARENT_CONTACT_RELATIONS.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        />
-      </FormField>
-      <FormField
-        label="Alternate contact number"
-        error={errors.parentContact}
-        hint="Optional — 10 digits"
-      >
-        <MobileInput {...register("parentContact", mobileFieldRules)} />
-      </FormField>
+    <div className={className ?? "sm:col-span-2 space-y-4 rounded-md border border-border/80 bg-muted/20 p-3"}>
+      <p className="text-sm font-medium">Alternate contact (optional)</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FormField
+          label="Relation"
+          error={errors.parentContactRelation}
+          hint="Who is this person to the student?"
+        >
+          <Controller
+            control={control}
+            name="parentContactRelation"
+            render={({ field }) => (
+              <Select
+                value={field.value || ""}
+                onValueChange={(value) => field.onChange(value || "")}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select relation" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PARENT_CONTACT_RELATIONS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+        </FormField>
+        {relation ? (
+          <FormField
+            label="Their name"
+            error={errors.parentContactName}
+            required
+            hint="Full name of the contact person"
+          >
+            <Input {...register("parentContactName", trimmedFieldRules)} placeholder="e.g. Rajesh Kumar" />
+          </FormField>
+        ) : (
+          <div className="hidden sm:block" aria-hidden />
+        )}
+        <FormField
+          label="Contact number"
+          error={errors.parentContact}
+          className={relation ? "" : "sm:col-span-2"}
+          hint={relation ? "10-digit mobile number" : "Select relation first to add a contact"}
+        >
+          <MobileInput
+            {...register("parentContact", mobileFieldRules)}
+            disabled={!relation}
+          />
+        </FormField>
+      </div>
     </div>
   );
 }

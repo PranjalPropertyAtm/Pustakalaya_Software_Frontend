@@ -10,10 +10,18 @@ export function getParentContactRelationLabel(relation?: string | null): string 
   return PARENT_CONTACT_RELATIONS.find((item) => item.value === relation)?.label ?? null;
 }
 
-export function formatParentContact(student: Pick<Student, "parentContact" | "parentContactRelation">): string | null {
+export function formatParentContact(
+  student: Pick<Student, "parentContact" | "parentContactRelation" | "parentContactName">
+): string | null {
   if (!student.parentContact?.trim()) return null;
   const relationLabel = getParentContactRelationLabel(student.parentContactRelation);
-  return relationLabel ? `${relationLabel}: ${student.parentContact}` : student.parentContact;
+  const name = student.parentContactName?.trim();
+  const phone = student.parentContact.trim();
+
+  if (relationLabel && name) return `${relationLabel} — ${name}: ${phone}`;
+  if (relationLabel) return `${relationLabel}: ${phone}`;
+  if (name) return `${name}: ${phone}`;
+  return phone;
 }
 
 export function getStudentSeatLabel(student: Student): string | null {

@@ -83,6 +83,7 @@ export function EditStudentDialog({
         email: values.email?.trim() || "",
         parentContact: values.parentContact?.trim() || "",
         parentContactRelation: values.parentContactRelation || null,
+        parentContactName: values.parentContactName?.trim() || "",
       };
       let updated = await studentsService.update(studentId, body);
       if (photo || idProof) {

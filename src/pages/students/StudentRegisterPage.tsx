@@ -139,6 +139,7 @@ export default function StudentRegisterPage() {
         mobileNumber: values.mobileNumber,
         parentContact: values.parentContact || undefined,
         parentContactRelation: values.parentContactRelation || undefined,
+        parentContactName: values.parentContactName?.trim() || undefined,
         address: values.address,
         email: values.email || undefined,
         branchId: values.branchId,

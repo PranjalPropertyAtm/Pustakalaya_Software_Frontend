@@ -45,6 +45,7 @@ export interface Student {
   mobileNumber: string;
   parentContact?: string;
   parentContactRelation?: string | null;
+  parentContactName?: string;
   address?: string;
   email?: string | null;
   branchId: string;
@@ -192,6 +193,7 @@ export interface StudentPaymentSummary {
     mobileNumber: string;
     parentContact?: string;
     parentContactRelation?: string | null;
+    parentContactName?: string;
     status: string;
     endDate?: string;
     plan?: { id: string; name: string; durationHours?: number } | null;
