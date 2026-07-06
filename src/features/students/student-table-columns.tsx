@@ -12,11 +12,12 @@ import {
 } from "lucide-react";
 import type { Student } from "@/types/domain";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { StatusBadge, statusToneFromValue } from "@/components/shared/StatusBadge";
+import { StatusBadge, statusToneFromValue, type StatusTone } from "@/components/shared/StatusBadge";
 import { RowActionMenu } from "@/components/data-table";
 import { typography } from "@/lib/typography";
 import { cn, formatDate } from "@/lib/utils";
-import { getStudentId, getStudentSeatLabel } from "@/lib/student";
+import { getStudentId, getStudentSeatLabel, getEnrollmentTypeShortLabel, enrollmentTypeTone } from "@/lib/student";
+import { studentRenewalDisplay } from "@/lib/studentRenewal";
 import { optimizeImageUrl } from "@/lib/image";
 import { EditStudentDialog } from "@/features/students/EditStudentDialog";
 import { DeleteStudentDialog } from "@/features/students/DeleteStudentDialog";
@@ -62,9 +63,16 @@ const StudentPhotoCell = memo(function StudentPhotoCell({ student }: { student: 
   );
 });
 
-const StudentActionsCell = memo(function StudentActionsCell({ student }: { student: Student }) {
+const StudentActionsCell = memo(function StudentActionsCell({
+  student,
+  listSearch = "",
+}: {
+  student: Student;
+  listSearch?: string;
+}) {
   const navigate = useNavigate();
   const id = getStudentId(student);
+  const profileNav = { state: { studentsListSearch: listSearch } };
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const isSuperAdmin = useAuthStore((s) => s.user?.role === ROLES.SUPER_ADMIN);
@@ -80,7 +88,7 @@ const StudentActionsCell = memo(function StudentActionsCell({ student }: { stude
           {
             label: "View profile",
             icon: <Eye className="mr-2 h-4 w-4" />,
-            onClick: () => navigate(`/students/${id}`),
+            onClick: () => navigate(`/students/${id}`, profileNav),
           },
           {
             label: "Edit",
@@ -96,13 +104,13 @@ const StudentActionsCell = memo(function StudentActionsCell({ student }: { stude
           {
             label: "Change seat",
             icon: <Armchair className="mr-2 h-4 w-4" />,
-            onClick: () => navigate(`/students/${id}`),
+            onClick: () => navigate(`/students/${id}`, profileNav),
             disabled: student.status !== "active",
           },
           {
             label: "View documents",
             icon: <FileText className="mr-2 h-4 w-4" />,
-            onClick: () => navigate(`/students/${id}#documents`),
+            onClick: () => navigate(`/students/${id}#documents`, profileNav),
           },
           {
             label: "Payment history",
@@ -127,7 +135,7 @@ const StudentActionsCell = memo(function StudentActionsCell({ student }: { stude
   );
 });
 
-export function useStudentColumns(): ColumnDef<Student>[] {
+export function useStudentColumns(listSearch = ""): ColumnDef<Student>[] {
   return useMemo(
     () => [
     {
@@ -156,6 +164,7 @@ export function useStudentColumns(): ColumnDef<Student>[] {
         return (
           <Link
             to={`/students/${id}`}
+            state={{ studentsListSearch: listSearch }}
             className={cn(typography.bodyMedium, "hover:text-primary transition-colors")}
             onClick={(e) => e.stopPropagation()}
           >
@@ -165,9 +174,61 @@ export function useStudentColumns(): ColumnDef<Student>[] {
       },
     },
     {
+      accessorKey: "enrollmentType",
+      header: "Type",
+      cell: ({ row }) => (
+        <StatusBadge
+          label={getEnrollmentTypeShortLabel(row.original.enrollmentType)}
+          tone={enrollmentTypeTone(row.original.enrollmentType)}
+        />
+      ),
+    },
+    {
       accessorKey: "mobileNumber",
       header: "Mobile",
       cell: ({ getValue }) => <span className="tabular-nums">{String(getValue() ?? "—")}</span>,
+    },
+    {
+      id: "registeredAt",
+      header: "Registered",
+      accessorFn: (row) => row.registeredAt ?? row.createdAt ?? "",
+      cell: ({ row }) => {
+        const v = row.original.registeredAt ?? row.original.createdAt;
+        const renewed = row.original.renewal?.hasRenewed;
+        return (
+          <div className="space-y-0.5">
+            {v ? (
+              <span className="whitespace-nowrap tabular-nums">{formatDate(v)}</span>
+            ) : (
+              "—"
+            )}
+            {renewed && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                <RefreshCw className="h-3 w-3" />
+                Renewal
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      id: "renewal",
+      header: "Membership",
+      enableSorting: false,
+      cell: ({ row }) => {
+        const { label, tone, detail } = studentRenewalDisplay(row.original.renewal);
+        if (label === "—") return <span className="text-muted-foreground">—</span>;
+        const badgeTone: StatusTone = tone === "outline" ? "neutral" : tone;
+        return (
+          <div className="space-y-0.5">
+            <StatusBadge label={label} tone={badgeTone} />
+            {detail && (
+              <p className="text-xs text-muted-foreground whitespace-nowrap">{detail}</p>
+            )}
+          </div>
+        );
+      },
     },
     {
       id: "branch",
@@ -249,9 +310,9 @@ export function useStudentColumns(): ColumnDef<Student>[] {
       header: "",
       enableHiding: false,
       enableSorting: false,
-      cell: ({ row }) => <StudentActionsCell student={row.original} />,
+      cell: ({ row }) => <StudentActionsCell student={row.original} listSearch={listSearch} />,
     },
   ],
-    []
+    [listSearch]
   );
 }

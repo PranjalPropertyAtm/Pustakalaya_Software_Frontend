@@ -62,6 +62,8 @@ export interface Student {
   endDate?: string;
   status: string;
   notes?: string;
+  enrollmentType?: "NEW" | "REJOIN";
+  registeredAt?: string;
   createdAt?: string;
   updatedAt?: string;
   branch?: {
@@ -82,6 +84,16 @@ export interface Student {
     seatNumber: string;
     label?: string;
   } | null;
+  renewal?: StudentRenewalSummary;
+}
+
+export interface StudentRenewalSummary {
+  state: "none" | "pending" | "partial" | "renewed";
+  hasRenewed: boolean;
+  lastRenewedAt?: string | null;
+  renewalNumber?: string | null;
+  balanceDue?: number | null;
+  renewalCount?: number;
 }
 
 export interface Receipt {
@@ -118,6 +130,7 @@ export interface StudentRegistration {
   paymentProofUrl?: string;
   receiptId?: string;
   status?: string;
+  enrollmentType?: "NEW" | "REJOIN";
   createdAt?: string;
 }
 

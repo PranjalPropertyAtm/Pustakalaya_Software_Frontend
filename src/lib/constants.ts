@@ -29,6 +29,27 @@ export const STUDENT_STATUSES = [
   "inactive",
 ] as const;
 
+/** Must match backend constants/enrollment.js */
+export const ENROLLMENT_TYPES = [
+  { value: "NEW", label: "New student" },
+  { value: "REJOIN", label: "Rejoining student" },
+] as const;
+
+export type EnrollmentType = (typeof ENROLLMENT_TYPES)[number]["value"];
+
+/** Must match backend students list renewal filter */
+export const STUDENT_RENEWAL_FILTERS = [{ value: "renewed", label: "Renewed" }] as const;
+
+export type StudentRenewalFilter = (typeof STUDENT_RENEWAL_FILTERS)[number]["value"];
+
+/** Combined student list filter — registration + renewal options */
+export const STUDENT_TYPE_FILTERS = [
+  ...ENROLLMENT_TYPES,
+  ...STUDENT_RENEWAL_FILTERS,
+] as const;
+
+export type StudentTypeFilter = (typeof STUDENT_TYPE_FILTERS)[number]["value"];
+
 /** Must match backend plan.model.js PLAN_NAMES */
 export const PLAN_NAMES = ["6hr", "8hr", "10hr", "12hr"] as const;
 

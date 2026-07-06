@@ -12,6 +12,7 @@ import {
   Building2,
   UserCog,
   UserPlus,
+  ClipboardList,
   PanelLeftClose,
   PanelLeft,
 } from "lucide-react";
@@ -29,6 +30,7 @@ const navItems = [
   { to: "/counsellors", label: "Counsellors", icon: UserCog, roles: "super", prefetch: () => import("@/pages/counsellors/CounsellorsPage") },
   { to: "/students", label: "Students", icon: Users, roles: "all", prefetch: () => import("@/pages/students/StudentsPage") },
   { to: "/students/register", label: "Register", icon: UserPlus, roles: "staff", prefetch: () => import("@/pages/students/StudentRegisterPage") },
+  { to: "/enquiries", label: "Enquiries", icon: ClipboardList, roles: "staff", prefetch: () => import("@/pages/enquiries/EnquiriesPage") },
   { to: "/seats", label: "Seat Map", icon: Grid3X3, roles: "all", prefetch: () => import("@/pages/seats/SeatsPage") },
   { to: "/plans", label: "Plans", icon: Package, roles: "all", prefetch: () => import("@/pages/plans/PlansPage") },
   { to: "/payments", label: "Payments", icon: CreditCard, roles: "all", prefetch: () => import("@/pages/payments/PaymentsPage") },

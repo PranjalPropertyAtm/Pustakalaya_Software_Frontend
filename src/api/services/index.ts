@@ -9,3 +9,4 @@ export { renewalsService } from "./renewals.service";
 export { reportsService } from "./reports.service";
 export { notificationsService } from "./notifications.service";
 export { receiptsService } from "./receipts.service";
+export { enquiriesService } from "./enquiries.service";

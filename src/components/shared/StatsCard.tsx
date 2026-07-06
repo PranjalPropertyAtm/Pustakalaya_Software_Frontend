@@ -10,6 +10,8 @@ interface StatsCardProps {
   trend?: { value: string; positive?: boolean };
   accent?: "primary" | "secondary" | "neutral";
   className?: string;
+  active?: boolean;
+  onClick?: () => void;
 }
 
 const accentStyles = {
@@ -26,11 +28,30 @@ export function StatsCard({
   trend,
   accent = "neutral",
   className,
+  active = false,
+  onClick,
 }: StatsCardProps) {
+  const interactive = Boolean(onClick);
+
   return (
     <div
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        interactive
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onClick?.();
+              }
+            }
+          : undefined
+      }
       className={cn(
         "group relative overflow-hidden rounded-xl border border-border/80 bg-card p-5 shadow-card transition-all hover:shadow-elevated hover:border-border",
+        interactive && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+        active && "border-primary ring-2 ring-primary/20 shadow-elevated",
         className
       )}
     >

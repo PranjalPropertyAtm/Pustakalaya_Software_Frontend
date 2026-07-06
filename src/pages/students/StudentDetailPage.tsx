@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { LazyImage } from "@/components/common/LazyImage";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -27,13 +27,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_CURRENCY } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { formatParentContact } from "@/lib/student";
+import { formatParentContact, getEnrollmentTypeLabel } from "@/lib/student";
+import { studentRenewalDisplay } from "@/lib/studentRenewal";
+import { StatusBadge, type StatusTone } from "@/components/shared/StatusBadge";
 import { PaymentHistoryList } from "@/components/payments/PaymentHistoryList";
 import { ChangeStudentSeatDialog } from "@/features/students/ChangeStudentSeatDialog";
 import { EditStudentDialog } from "@/features/students/EditStudentDialog";
 import { DeleteStudentDialog } from "@/features/students/DeleteStudentDialog";
 import { useAuthStore } from "@/stores/authStore";
 import { ROLES } from "@/lib/constants";
+import { resolveStudentDetailReturnPath } from "@/lib/studentsListUrl";
 
 function DetailRow({ label, value }: { label: string; value?: React.ReactNode }) {
   if (value === undefined || value === null || value === "") return null;
@@ -47,6 +50,8 @@ function DetailRow({ label, value }: { label: string; value?: React.ReactNode })
 
 export default function StudentDetailPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnPath = resolveStudentDetailReturnPath(location.state);
   const { studentId = "" } = useParams();
   const isSuperAdmin = useAuthStore((s) => s.user?.role === ROLES.SUPER_ADMIN);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -95,6 +100,8 @@ export default function StudentDetailPage() {
     student.preferredStartTime,
     student.preferredEndTime
   );
+  const membership = studentRenewalDisplay(student.renewal);
+  const membershipTone: StatusTone = membership.tone === "outline" ? "neutral" : membership.tone;
 
   const registrations = registrationsData?.items ?? [];
   const payments = paymentsData?.items ?? [];
@@ -105,7 +112,7 @@ export default function StudentDetailPage() {
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="sm" asChild>
-          <Link to="/students">
+          <Link to={returnPath}>
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back
           </Link>
@@ -124,7 +131,7 @@ export default function StudentDetailPage() {
                   student={student}
                   open={deleteOpen}
                   onOpenChange={setDeleteOpen}
-                  onDeleted={() => navigate("/students")}
+                  onDeleted={() => navigate(returnPath)}
                 />
                 <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
                   Delete
@@ -145,6 +152,9 @@ export default function StudentDetailPage() {
                 ? "Inactive (renewal due)"
                 : student.status}
             </Badge>
+            {membership.label !== "—" && (
+              <StatusBadge label={membership.label} tone={membershipTone} className="text-sm" />
+            )}
           </div>
         }
       />
@@ -172,6 +182,10 @@ export default function StudentDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            <DetailRow
+              label="Student type"
+              value={getEnrollmentTypeLabel(student.enrollmentType)}
+            />
             <DetailRow label="Mobile" value={student.mobileNumber} />
             <DetailRow label="Alternate contact" value={formatParentContact(student)} />
             <DetailRow label="Email" value={student.email} />
@@ -211,6 +225,21 @@ export default function StudentDetailPage() {
             )}
             <DetailRow label="Schedule" value={schedule || undefined} />
             <DetailRow label="Joining" value={student.joiningDate ? formatDate(student.joiningDate) : undefined} />
+            {membership.label !== "—" && (
+              <DetailRow
+                label="Membership"
+                value={
+                  <span className="inline-flex flex-col items-end sm:items-start gap-0.5">
+                    <span>{membership.label}</span>
+                    {membership.detail && (
+                      <span className="text-xs text-muted-foreground font-normal">
+                        {membership.detail}
+                      </span>
+                    )}
+                  </span>
+                }
+              />
+            )}
             <DetailRow label="Start" value={student.startDate ? formatDate(student.startDate) : undefined} />
             <DetailRow label="Ends" value={student.endDate ? formatDate(student.endDate) : undefined} />
           </CardContent>
@@ -353,7 +382,9 @@ export default function StudentDetailPage() {
       )}
 
       <p className="text-xs text-muted-foreground flex items-center gap-4">
-        {student.createdAt && <span>Registered {formatDate(student.createdAt)}</span>}
+        {(student.registeredAt ?? student.createdAt) && (
+          <span>Registered {formatDate(student.registeredAt ?? student.createdAt!)}</span>
+        )}
         <span className="flex items-center gap-1">
           <Phone className="h-3 w-3" />
           {student.mobileNumber}

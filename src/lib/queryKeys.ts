@@ -53,4 +53,14 @@ export const queryKeys = {
     list: (params?: Record<string, unknown>) => ["notifications", "list", params] as const,
     unreadCount: (params?: Record<string, unknown>) => ["notifications", "unread", params] as const,
   },
+  enquiries: {
+    all: ["enquiries"] as const,
+    list: (params?: Record<string, unknown>) => ["enquiries", "list", params] as const,
+    detail: (id: string) => ["enquiries", id] as const,
+    followUps: (id: string) => ["enquiries", id, "follow-ups"] as const,
+    reminders: (id: string) => ["enquiries", id, "reminders"] as const,
+    timeline: (id: string) => ["enquiries", id, "timeline"] as const,
+    dashboard: (params?: Record<string, unknown>) => ["enquiries", "dashboard", params] as const,
+    reports: (params?: Record<string, unknown>) => ["enquiries", "reports", params] as const,
+  },
 };

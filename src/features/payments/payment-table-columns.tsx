@@ -12,7 +12,10 @@ function formatPaymentType(type?: string) {
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
-export function getPaymentColumns(showStudent = true): ColumnDef<Payment>[] {
+export function getPaymentColumns(
+  showStudent = true,
+  options?: { studentReturnTo?: string }
+): ColumnDef<Payment>[] {
   const cols: ColumnDef<Payment>[] = [
     {
       id: "date",
@@ -43,6 +46,7 @@ export function getPaymentColumns(showStudent = true): ColumnDef<Payment>[] {
         return p.student?.fullName ? (
           <Link
             to={`/students/${getStudentId({ id: studentLinkId, _id: studentLinkId })}`}
+            state={options?.studentReturnTo ? { returnTo: options.studentReturnTo } : undefined}
             className="font-medium hover:text-primary"
             onClick={(e) => e.stopPropagation()}
           >

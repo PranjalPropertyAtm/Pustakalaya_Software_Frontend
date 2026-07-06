@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { useForm, Controller, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
-import { studentsService, branchesService, seatsService, plansService } from "@/api/services";
+import { studentsService, branchesService, seatsService, plansService, enquiriesService } from "@/api/services";
 import {
   studentRegistrationSchema,
   createStudentRegistrationDefaultValues,
@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { queryKeys } from "@/lib/queryKeys";
-import { PAYMENT_METHODS } from "@/lib/constants";
+import { PAYMENT_METHODS, ENROLLMENT_TYPES } from "@/lib/constants";
 import { getPlanId, getPlanLabel, isShiftBasedPlan } from "@/lib/plan";
 import { usePlanPricing } from "@/hooks/usePlanPricing";
 import { formatCurrency } from "@/lib/utils";
@@ -40,9 +40,13 @@ import type { Control, FieldErrors, UseFormRegister } from "react-hook-form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { compressImageFile } from "@/lib/compressImage";
+import type { EnquiryPrefillState } from "@/types/enquiry";
 
 export default function StudentRegisterPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const enquiryPrefill = (location.state as { enquiryPrefill?: EnquiryPrefillState } | null)
+    ?.enquiryPrefill;
   const { effectiveBranchId, isSuperAdmin } = useBranchContext();
   const [photo, setPhoto] = useState<File | null>(null);
   const [idProof, setIdProof] = useState<File | null>(null);
@@ -60,12 +64,34 @@ export default function StudentRegisterPage() {
     }
   }, [effectiveBranchId, form]);
 
+  useEffect(() => {
+    if (!enquiryPrefill) return;
+    if (enquiryPrefill.fullName) form.setValue("fullName", enquiryPrefill.fullName);
+    if (enquiryPrefill.mobileNumber) form.setValue("mobileNumber", enquiryPrefill.mobileNumber);
+    if (enquiryPrefill.parentContact) form.setValue("parentContact", enquiryPrefill.parentContact);
+    if (enquiryPrefill.parentContactName) {
+      form.setValue("parentContactName", enquiryPrefill.parentContactName);
+      form.setValue("parentContactRelation", "OTHER");
+    }
+    if (enquiryPrefill.address) form.setValue("address", enquiryPrefill.address);
+    if (enquiryPrefill.branchId) form.setValue("branchId", enquiryPrefill.branchId);
+    if (enquiryPrefill.planId) form.setValue("planId", enquiryPrefill.planId);
+    if (enquiryPrefill.shiftCode) form.setValue("shiftCode", enquiryPrefill.shiftCode);
+    if (enquiryPrefill.notes) form.setValue("notes", enquiryPrefill.notes);
+    if (enquiryPrefill.email) form.setValue("email", enquiryPrefill.email);
+    if (enquiryPrefill.expectedJoiningDate) {
+      form.setValue("joiningDate", enquiryPrefill.expectedJoiningDate);
+      form.setValue("startDate", enquiryPrefill.expectedJoiningDate);
+    }
+  }, [enquiryPrefill, form]);
+
   const branchId = form.watch("branchId");
   const planId = form.watch("planId");
   const shiftCode = form.watch("shiftCode");
   const seatId = form.watch("seatId");
   const durationMonths = form.watch("durationMonths") ?? 1;
   const collectPaymentNow = form.watch("collectPaymentNow");
+  const enrollmentType = form.watch("enrollmentType");
 
   const {
     totalAmount,
@@ -135,6 +161,7 @@ export default function StudentRegisterPage() {
     }) => {
       const { values, photo, idProof, paymentProof } = input;
       const body: Record<string, unknown> = {
+        enrollmentType: values.enrollmentType,
         fullName: values.fullName,
         mobileNumber: values.mobileNumber,
         parentContact: values.parentContact || undefined,
@@ -179,8 +206,24 @@ export default function StudentRegisterPage() {
 
       return result;
     },
-    onSuccess: () => {
-      toast.success("Student registered successfully");
+    onSuccess: async (result) => {
+      if (enquiryPrefill?.enquiryId) {
+        const studentId = result.student.id ?? result.student._id;
+        if (studentId) {
+          try {
+            await enquiriesService.convert(enquiryPrefill.enquiryId, { studentId: String(studentId) });
+            toast.success("Student registered and enquiry marked as converted");
+          } catch {
+            toast.warning("Student registered, but enquiry conversion failed. Mark it converted manually.");
+          }
+        }
+      } else {
+        toast.success(
+          enrollmentType === "REJOIN"
+            ? "Rejoining student registered successfully"
+            : "New student registered successfully"
+        );
+      }
       navigate("/students");
     },
     onError: (err) => {
@@ -215,11 +258,53 @@ export default function StudentRegisterPage() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <PageHeader title="Student Registration" description="Enroll a new library member with seat allocation" />
+      <PageHeader
+        title="Student Registration"
+        description={
+          enquiryPrefill
+            ? `Converting enquiry — complete remaining details for ${enquiryPrefill.fullName ?? "prospect"}`
+            : enrollmentType === "REJOIN"
+              ? "Re-enroll a returning library member with seat allocation"
+              : "Enroll a new library member with seat allocation"
+        }
+      />
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <Card>
           <CardHeader><CardTitle className="text-base">Personal details</CardTitle></CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
+            <FormField
+              label="Student type"
+              error={form.formState.errors.enrollmentType}
+              required
+              className="sm:col-span-2"
+            >
+              <Controller
+                control={form.control}
+                name="enrollmentType"
+                render={({ field }) => (
+                  <div className="flex flex-wrap gap-3">
+                    {ENROLLMENT_TYPES.map((type) => {
+                      const selected = field.value === type.value;
+                      return (
+                        <button
+                          key={type.value}
+                          type="button"
+                          onClick={() => field.onChange(type.value)}
+                          className={[
+                            "rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors",
+                            selected
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                          ].join(" ")}
+                        >
+                          {type.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              />
+            </FormField>
             <FormField label="Full name" error={form.formState.errors.fullName} required>
               <Input {...form.register("fullName", trimmedFieldRules)} />
             </FormField>
@@ -458,7 +543,11 @@ export default function StudentRegisterPage() {
             Cancel
           </Button>
           <Button type="submit" disabled={registerMutation.isPending}>
-            {registerMutation.isPending ? "Registering..." : "Register student"}
+            {registerMutation.isPending
+              ? "Registering..."
+              : enrollmentType === "REJOIN"
+                ? "Register rejoining student"
+                : "Register new student"}
           </Button>
         </div>
       </form>

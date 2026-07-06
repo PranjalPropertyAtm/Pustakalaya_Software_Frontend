@@ -26,7 +26,16 @@ export default function PaymentsPage() {
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [searchParams, setSearchParams] = useSearchParams();
-  const columns = useMemo(() => getPaymentColumns(true), []);
+
+  const paymentsReturnPath = useMemo(() => {
+    const q = searchParams.toString();
+    return q ? `/payments?${q}` : "/payments";
+  }, [searchParams]);
+
+  const columns = useMemo(
+    () => getPaymentColumns(true, { studentReturnTo: paymentsReturnPath }),
+    [paymentsReturnPath]
+  );
 
   const initialTab = searchParams.get("tab");
   const initialStudentId = searchParams.get("studentId") ?? undefined;

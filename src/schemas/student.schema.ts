@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { mobileNumberSchema, optionalMobileSchema } from "@/schemas/zodHelpers";
-import { PARENT_CONTACT_RELATIONS, type ParentContactRelation } from "@/lib/constants";
+import { ENROLLMENT_TYPES, PARENT_CONTACT_RELATIONS, type ParentContactRelation } from "@/lib/constants";
+
+const enrollmentTypeValues = ENROLLMENT_TYPES.map((item) => item.value) as [
+  (typeof ENROLLMENT_TYPES)[number]["value"],
+  ...(typeof ENROLLMENT_TYPES)[number]["value"][],
+];
 
 const objectId = z.string().trim().regex(/^[0-9a-fA-F]{24}$/, "Invalid selection");
 
@@ -43,6 +48,7 @@ const refineParentContactPair = (
 
 export const studentRegistrationSchema = z
   .object({
+    enrollmentType: z.enum(enrollmentTypeValues),
     fullName: z.string().trim().min(2, "Name is required").max(120),
     mobileNumber: mobileNumberSchema,
     parentContact: optionalMobileSchema,
@@ -148,6 +154,7 @@ export function createStudentRegistrationDefaultValues(
 ): Partial<StudentRegistrationFormValues> {
   const today = new Date().toISOString().slice(0, 10);
   return {
+    enrollmentType: "NEW",
     durationMonths: 1,
     branchId,
     joiningDate: today,

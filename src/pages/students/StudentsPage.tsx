@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { Plus, Users, UserCheck, UserX, Clock } from "lucide-react";
 import { studentsService, plansService } from "@/api/services";
 import { queryKeys } from "@/lib/queryKeys";
 import { useBranchContext } from "@/hooks/useBranchContext";
+import { useStudentsListUrlState } from "@/hooks/useStudentsListUrlState";
 import { listQueryOptions, staticQueryOptions } from "@/lib/queryDefaults";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -20,9 +21,11 @@ import {
   DataTableFilters,
 } from "@/components/data-table";
 import { exportToCsv } from "@/lib/export";
-import { getStudentId } from "@/lib/student";
+import { getStudentId, getEnrollmentTypeLabel } from "@/lib/student";
 import { getPlanId, getPlanLabel } from "@/lib/plan";
-import { STUDENT_STATUSES } from "@/lib/constants";
+import { formatDate } from "@/lib/utils";
+import { STUDENT_STATUSES, STUDENT_TYPE_FILTERS } from "@/lib/constants";
+import { studentTypeToListParams, membershipToListParams, DEFAULT_STUDENTS_LIST_URL_STATE, type StudentsMembershipFilter } from "@/lib/studentsListUrl";
 import {
   Select,
   SelectContent,
@@ -31,13 +34,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useStudentColumns } from "@/features/students/student-table-columns";
+import type { StudentRenewalSummary } from "@/types/domain";
+import { studentRenewalExportValue } from "@/lib/studentRenewal";
 import { toast } from "sonner";
+import type { StudentsDateField } from "@/lib/studentsListUrl";
 
-type MembershipFilter = "all" | "active" | "inactive" | "expiring_soon";
-type StatusFilter = "all" | (typeof STUDENT_STATUSES)[number];
-type StudentDateField = "joiningDate" | "createdAt" | "startDate" | "endDate";
-
-const STUDENT_DATE_FIELD_LABELS: Record<StudentDateField, string> = {
+const STUDENT_DATE_FIELD_LABELS: Record<StudentsDateField, string> = {
   joiningDate: "Joining date",
   createdAt: "Registered on",
   startDate: "Membership start",
@@ -47,19 +49,24 @@ const STUDENT_DATE_FIELD_LABELS: Record<StudentDateField, string> = {
 export default function StudentsPage() {
   const navigate = useNavigate();
   const { branchQuery } = useBranchContext();
-  const columns = useStudentColumns();
-
-  const [search, setSearch] = useState("");
-  const [membership, setMembership] = useState<MembershipFilter>("all");
-  const [status, setStatus] = useState<StatusFilter>("all");
-  const [planId, setPlanId] = useState("all");
-  const [dateField, setDateField] = useState<StudentDateField>("joiningDate");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [sortBy, setSortBy] = useState<"createdAt" | "endDate" | "fullName">("createdAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [pageIndex, setPageIndex] = useState(0);
-  const [pageSize, setPageSize] = useState(20);
+  const {
+    search,
+    status,
+    studentType,
+    membership,
+    planId,
+    dateField,
+    dateFrom,
+    dateTo,
+    sortBy,
+    sortOrder,
+    pageIndex,
+    pageSize,
+    listSearch,
+    patchState,
+    clearFilters,
+  } = useStudentsListUrlState();
+  const columns = useStudentColumns(listSearch);
 
   const listParams = useMemo(() => {
     const params: Record<string, unknown> = {
@@ -71,6 +78,8 @@ export default function StudentsPage() {
     };
     if (search.trim()) params.search = search.trim();
     if (planId !== "all") params.planId = planId;
+    Object.assign(params, studentTypeToListParams(studentType));
+    Object.assign(params, membershipToListParams(membership));
     if (dateFrom) {
       params.from = dateFrom;
       params.dateField = dateField;
@@ -79,14 +88,9 @@ export default function StudentsPage() {
       params.to = dateTo;
       params.dateField = dateField;
     }
-    if (membership !== "all") {
-      params.membership = membership;
-      if (membership === "expiring_soon") params.expiringInDays = 7;
-    } else if (status !== "all") {
-      params.status = status;
-    }
+    if (status !== "all" && membership === "all") params.status = status;
     return params;
-  }, [branchQuery, search, planId, dateField, dateFrom, dateTo, membership, status, sortBy, sortOrder, pageIndex, pageSize]);
+  }, [branchQuery, search, planId, studentType, membership, dateField, dateFrom, dateTo, status, sortBy, sortOrder, pageIndex, pageSize]);
 
   const { data: plansData } = useQuery({
     queryKey: queryKeys.plans.list({ isActive: "true" }),
@@ -151,25 +155,29 @@ export default function StudentsPage() {
   };
 
   const filterCount = [
-    membership !== "all",
     status !== "all",
+    membership !== "all",
+    studentType !== "all",
     planId !== "all",
     dateFrom || dateTo,
-    dateField !== "joiningDate",
+    dateField !== DEFAULT_STUDENTS_LIST_URL_STATE.dateField,
     sortBy !== "createdAt" || sortOrder !== "desc",
   ].filter(Boolean).length;
 
-  const clearFilters = () => {
-    setSearch("");
-    setMembership("all");
-    setStatus("all");
-    setPlanId("all");
-    setDateField("joiningDate");
-    setDateFrom("");
-    setDateTo("");
-    setSortBy("createdAt");
-    setSortOrder("desc");
-    setPageIndex(0);
+  const clearAllFilters = () => {
+    clearFilters();
+  };
+
+  const handleMembershipCardClick = (next: StudentsMembershipFilter) => {
+    if (next === "all") {
+      patchState({ membership: "all" }, { resetPage: true });
+      return;
+    }
+    if (membership === next) {
+      patchState({ membership: "all" }, { resetPage: true });
+      return;
+    }
+    patchState({ membership: next, status: "all" }, { resetPage: true });
   };
 
   const handleExport = async () => {
@@ -182,6 +190,12 @@ export default function StudentsPage() {
       [
         { key: "studentCode", header: "Student ID" },
         { key: "fullName", header: "Name" },
+        {
+          key: "enrollmentType",
+          header: "Type",
+          format: (r) =>
+            getEnrollmentTypeLabel((r as { enrollmentType?: "NEW" | "REJOIN" }).enrollmentType),
+        },
         { key: "mobileNumber", header: "Mobile" },
         { key: "branch", header: "Branch", format: (r) => String((r as { branch?: { name?: string } }).branch?.name ?? "") },
         { key: "plan", header: "Plan", format: (r) => String((r as { plan?: { name?: string } }).plan?.name ?? "") },
@@ -194,6 +208,21 @@ export default function StudentsPage() {
           },
         },
         { key: "status", header: "Status" },
+        {
+          key: "renewal",
+          header: "Renewal",
+          format: (r) =>
+            studentRenewalExportValue((r as { renewal?: StudentRenewalSummary }).renewal),
+        },
+        {
+          key: "registeredAt",
+          header: "Registered",
+          format: (r) => {
+            const row = r as { registeredAt?: string; createdAt?: string };
+            const v = row.registeredAt ?? row.createdAt;
+            return v ? formatDate(v) : "";
+          },
+        },
         { key: "startDate", header: "Start Date" },
         { key: "endDate", header: "End Date" },
       ],
@@ -218,10 +247,38 @@ export default function StudentsPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatsCard title="Total students" value={summaryTotals.total} icon={Users} accent="primary" />
-        <StatsCard title="Active" value={summaryTotals.active} icon={UserCheck} accent="secondary" />
-        <StatsCard title="Renewal due" value={summaryTotals.due} icon={UserX} accent="neutral" />
-        <StatsCard title="Expiring ≤7d" value={summaryTotals.expiring} icon={Clock} accent="neutral" />
+        <StatsCard
+          title="Total students"
+          value={summaryTotals.total}
+          icon={Users}
+          accent="primary"
+          active={membership === "all"}
+          onClick={() => handleMembershipCardClick("all")}
+        />
+        <StatsCard
+          title="Active"
+          value={summaryTotals.active}
+          icon={UserCheck}
+          accent="secondary"
+          active={membership === "active"}
+          onClick={() => handleMembershipCardClick("active")}
+        />
+        <StatsCard
+          title="Renewal due"
+          value={summaryTotals.due}
+          icon={UserX}
+          accent="neutral"
+          active={membership === "inactive"}
+          onClick={() => handleMembershipCardClick("inactive")}
+        />
+        <StatsCard
+          title="Expiring ≤7d"
+          value={summaryTotals.expiring}
+          icon={Clock}
+          accent="neutral"
+          active={membership === "expiring_soon"}
+          onClick={() => handleMembershipCardClick("expiring_soon")}
+        />
       </div>
 
       {isError && <ErrorState onRetry={refetch} />}
@@ -232,34 +289,34 @@ export default function StudentsPage() {
               <DataTableToolbar
                 table={table}
                 searchValue={search}
-                onSearchChange={(v) => {
-                  setSearch(v);
-                  setPageIndex(0);
-                }}
+                onSearchChange={(v) => patchState({ search: v }, { resetPage: true })}
                 searchPlaceholder="Search name, mobile, code…"
                 onExport={handleExport}
                 filters={
                   <DataTableFilters>
-                    <FilterDropdown label="Filters" activeCount={filterCount} onClear={clearFilters}>
+                    <FilterDropdown label="Filters" activeCount={filterCount} onClear={clearAllFilters}>
                       <div className="space-y-3">
                         <div className="space-y-1.5">
-                          <Label className="text-xs">Membership</Label>
+                          <Label className="text-xs">Student type</Label>
                           <Select
-                            value={membership}
+                            value={studentType}
                             onValueChange={(v) => {
-                              setMembership(v as MembershipFilter);
-                              if (v !== "all") setStatus("all");
-                              setPageIndex(0);
+                              patchState(
+                                { studentType: v as typeof studentType },
+                                { resetPage: true }
+                              );
                             }}
                           >
                             <SelectTrigger className="h-8">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="all">All</SelectItem>
-                              <SelectItem value="active">Active only</SelectItem>
-                              <SelectItem value="inactive">Period ended</SelectItem>
-                              <SelectItem value="expiring_soon">Expiring in 7 days</SelectItem>
+                              <SelectItem value="all">All students</SelectItem>
+                              {STUDENT_TYPE_FILTERS.map((item) => (
+                                <SelectItem key={item.value} value={item.value}>
+                                  {item.label}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -268,15 +325,14 @@ export default function StudentsPage() {
                           <Select
                             value={dateField}
                             onValueChange={(v) => {
-                              setDateField(v as StudentDateField);
-                              setPageIndex(0);
+                              patchState({ dateField: v as StudentsDateField }, { resetPage: true });
                             }}
                           >
                             <SelectTrigger className="h-8">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {(Object.entries(STUDENT_DATE_FIELD_LABELS) as [StudentDateField, string][]).map(
+                              {(Object.entries(STUDENT_DATE_FIELD_LABELS) as [StudentsDateField, string][]).map(
                                 ([value, label]) => (
                                   <SelectItem key={value} value={value}>
                                     {label}
@@ -289,23 +345,14 @@ export default function StudentsPage() {
                         <TableDateRangeFilter
                           from={dateFrom}
                           to={dateTo}
-                          onFromChange={(v) => {
-                            setDateFrom(v);
-                            setPageIndex(0);
-                          }}
-                          onToChange={(v) => {
-                            setDateTo(v);
-                            setPageIndex(0);
-                          }}
+                          onFromChange={(v) => patchState({ dateFrom: v }, { resetPage: true })}
+                          onToChange={(v) => patchState({ dateTo: v }, { resetPage: true })}
                         />
                         <div className="space-y-1.5">
                           <Label className="text-xs">Plan</Label>
                           <Select
                             value={planId}
-                            onValueChange={(v) => {
-                              setPlanId(v);
-                              setPageIndex(0);
-                            }}
+                            onValueChange={(v) => patchState({ planId: v }, { resetPage: true })}
                           >
                             <SelectTrigger className="h-8">
                               <SelectValue placeholder="All plans" />
@@ -329,11 +376,14 @@ export default function StudentsPage() {
                           <Select
                             value={status}
                             onValueChange={(v) => {
-                              setStatus(v as StatusFilter);
-                              if (v !== "all") setMembership("all");
-                              setPageIndex(0);
+                              patchState(
+                                {
+                                  status: v as typeof status,
+                                  ...(v !== "all" ? { membership: "all" as const } : {}),
+                                },
+                                { resetPage: true }
+                              );
                             }}
-                            disabled={membership !== "all"}
                           >
                             <SelectTrigger className="h-8">
                               <SelectValue />
@@ -353,7 +403,7 @@ export default function StudentsPage() {
                             <Label className="text-xs">Sort</Label>
                             <Select
                               value={sortBy}
-                              onValueChange={(v) => setSortBy(v as typeof sortBy)}
+                              onValueChange={(v) => patchState({ sortBy: v as typeof sortBy })}
                             >
                               <SelectTrigger className="h-8">
                                 <SelectValue />
@@ -369,7 +419,7 @@ export default function StudentsPage() {
                             <Label className="text-xs">Order</Label>
                             <Select
                               value={sortOrder}
-                              onValueChange={(v) => setSortOrder(v as "asc" | "desc")}
+                              onValueChange={(v) => patchState({ sortOrder: v as "asc" | "desc" })}
                             >
                               <SelectTrigger className="h-8">
                                 <SelectValue />
@@ -397,7 +447,11 @@ export default function StudentsPage() {
             stickyHeader
             stickyColumnIds={["photo", "actions"]}
             getRowId={(row) => getStudentId(row)}
-            onRowClick={(row) => navigate(`/students/${getStudentId(row)}`)}
+            onRowClick={(row) =>
+              navigate(`/students/${getStudentId(row)}`, {
+                state: { studentsListSearch: listSearch },
+              })
+            }
             emptyIcon={Users}
             emptyTitle="No students found"
             emptyDescription="Try different filters or register a new student."
@@ -406,8 +460,7 @@ export default function StudentsPage() {
               pageSize,
               totalRows: total,
               onPaginationChange: ({ pageIndex: pi, pageSize: ps }) => {
-                setPageIndex(pi);
-                setPageSize(ps);
+                patchState({ pageIndex: pi, pageSize: ps });
               },
             }}
             bulkActions={[
@@ -420,6 +473,14 @@ export default function StudentsPage() {
                     [
                       { key: "studentCode", header: "Student ID" },
                       { key: "fullName", header: "Name" },
+                      {
+                        key: "enrollmentType",
+                        header: "Type",
+                        format: (r) =>
+                          getEnrollmentTypeLabel(
+                            (r as { enrollmentType?: "NEW" | "REJOIN" }).enrollmentType
+                          ),
+                      },
                       { key: "mobileNumber", header: "Mobile" },
                       { key: "status", header: "Status" },
                     ],

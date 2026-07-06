@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { renewalsService, plansService, seatsService } from "@/api/services";
 import { queryKeys } from "@/lib/queryKeys";
 import { isShiftBasedPlan } from "@/lib/plan";
 import type { Plan, SeatAvailabilityItem, Student } from "@/types/domain";
 import { getStudentId } from "@/lib/student";
+import { getRenewalId, computeDefaultRenewalStartDate, computeRenewalEndDate, toDateInputValue } from "@/lib/renewal";
 import { SHIFT_CODES } from "@/lib/constants";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/utils";
 
 import {
   Dialog,
@@ -18,6 +21,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { LoadingState } from "@/components/common/LoadingState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { FormField } from "@/components/forms/FormField";
@@ -42,6 +46,7 @@ export function StartRenewalDialog({
   onSuccess?: () => void;
 }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const studentId = getStudentId(student);
   const branchId = student.branchId;
 
@@ -49,6 +54,8 @@ export function StartRenewalDialog({
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
   const [shiftCode, setShiftCode] = useState<string | null>(null);
   const [selectedSeatId, setSelectedSeatId] = useState<string>("");
+  const [membershipStartDate, setMembershipStartDate] = useState("");
+  const [durationMonths, setDurationMonths] = useState(1);
   const currentSeatId = student.currentSeatId ?? student.seat?.id ?? "";
   const selectableSeatIds = useMemo(() => {
     return currentSeatId ? [String(currentSeatId)] : [];
@@ -86,15 +93,26 @@ export function StartRenewalDialog({
 
   const startMutation = useMutation({
     mutationFn: (body: Record<string, unknown>) => renewalsService.initiate(body),
-    onSuccess: () => {
-      toast.success("Renewal started");
+    onSuccess: (renewal) => {
+      const renewalId = getRenewalId(renewal);
+      toast.success("Renewal created — complete payment to activate");
       queryClient.invalidateQueries({ queryKey: ["renewals"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["students"], exact: false });
       onSuccess?.();
       setOpen(false);
       setSelectedSeatId("");
+      navigate(
+        `/payments?tab=collect&studentId=${encodeURIComponent(studentId)}&renewalId=${encodeURIComponent(renewalId)}`
+      );
     },
     onError: (err: Error) => toast.error(err.message || "Could not start renewal"),
   });
+
+  useEffect(() => {
+    if (!open) return;
+    setMembershipStartDate(computeDefaultRenewalStartDate(student.endDate));
+    setDurationMonths(1);
+  }, [open, student.endDate]);
 
   useEffect(() => {
     if (!open) return;
@@ -102,6 +120,18 @@ export function StartRenewalDialog({
     setSelectedPlanId((prev) => prev || defaultPlanId);
     setShiftCode((prev) => prev ?? student.currentShiftCode ?? null);
   }, [open, defaultPlanId, student.currentShiftCode]);
+
+  const membershipEndPreview = useMemo(() => {
+    if (!membershipStartDate) return null;
+    const start = new Date(`${membershipStartDate}T00:00:00`);
+    if (Number.isNaN(start.getTime())) return null;
+    return computeRenewalEndDate(start, durationMonths);
+  }, [membershipStartDate, durationMonths]);
+
+  const minStartDate = useMemo(() => {
+    if (!student.joiningDate) return undefined;
+    return toDateInputValue(new Date(student.joiningDate));
+  }, [student.joiningDate]);
 
   useEffect(() => {
     if (!open) return;
@@ -120,7 +150,9 @@ export function StartRenewalDialog({
     if (!shiftBased) setShiftCode(null);
   }, [selectedPlanId]);
 
-  const canSubmit = Boolean(selectedSeatId && selectedPlanId) && (!shiftBased || Boolean(shiftCode));
+  const canSubmit =
+    Boolean(selectedSeatId && selectedPlanId && membershipStartDate) &&
+    (!shiftBased || Boolean(shiftCode));
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -147,28 +179,75 @@ export function StartRenewalDialog({
           )}
 
           {!plansLoading && !plansError && (
-            <FormField label="Plan" required>
-              <Select
-                value={selectedPlanId}
-                onValueChange={(v) => setSelectedPlanId(v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a plan" />
-                </SelectTrigger>
-                <SelectContent>
-                  {plans
-                    .filter((p) => p.isActive)
-                    .map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </FormField>
+            <>
+              <FormField label="Plan" required>
+                <Select
+                  value={selectedPlanId}
+                  onValueChange={(v) => setSelectedPlanId(v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plans
+                      .filter((p) => p.isActive)
+                      .map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  label="Membership start date"
+                  required
+                  hint={
+                    student.endDate
+                      ? `Previous term ended ${formatDate(student.endDate)}`
+                      : undefined
+                  }
+                >
+                  <Input
+                    type="date"
+                    required
+                    value={membershipStartDate}
+                    min={minStartDate}
+                    onChange={(e) => setMembershipStartDate(e.target.value)}
+                  />
+                </FormField>
+                <FormField label="Duration (months)" required>
+                  <Select
+                    value={String(durationMonths)}
+                    onValueChange={(v) => setDurationMonths(Number(v))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n} month{n === 1 ? "" : "s"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+              </div>
+              {membershipEndPreview && (
+                <p className="text-sm text-muted-foreground -mt-2">
+                  Membership will run until{" "}
+                  <span className="font-medium text-foreground">
+                    {formatDate(membershipEndPreview)}
+                  </span>
+                </p>
+              )}
+            </>
           )}
 
-          {shiftBased && (
+          {shiftBased && !plansLoading && !plansError && (
             <FormField label="Shift" required>
               <Select value={shiftCode ?? ""} onValueChange={(v) => setShiftCode(v)}>
                 <SelectTrigger>
@@ -240,12 +319,14 @@ export function StartRenewalDialog({
                 studentId,
                 planId: selectedPlanId,
                 seatId: selectedSeatId,
+                newStartDate: membershipStartDate,
+                durationMonths,
                 ...(shiftBased ? { shiftCode } : {}),
               })
             }
             disabled={!canSubmit || startMutation.isPending}
           >
-            {startMutation.isPending ? "Starting..." : "Start renewal"}
+            {startMutation.isPending ? "Creating…" : "Continue to payment"}
           </Button>
         </DialogFooter>
       </DialogContent>

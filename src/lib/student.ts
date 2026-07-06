@@ -1,5 +1,6 @@
 import type { Student } from "@/types/domain";
-import { PARENT_CONTACT_RELATIONS } from "@/lib/constants";
+import { ENROLLMENT_TYPES, PARENT_CONTACT_RELATIONS } from "@/lib/constants";
+import type { StatusTone } from "@/components/shared/StatusBadge";
 
 export function getStudentId(student: Pick<Student, "id" | "_id">): string {
   return student.id ?? student._id ?? "";
@@ -30,4 +31,18 @@ export function getStudentSeatLabel(student: Student): string | null {
   if (seat.seatNumber) return seat.seatNumber;
   if (seat.label) return seat.label;
   return null;
+}
+
+export function getEnrollmentTypeLabel(enrollmentType?: Student["enrollmentType"]): string {
+  return (
+    ENROLLMENT_TYPES.find((item) => item.value === (enrollmentType ?? "NEW"))?.label ?? "New student"
+  );
+}
+
+export function getEnrollmentTypeShortLabel(enrollmentType?: Student["enrollmentType"]): string {
+  return enrollmentType === "REJOIN" ? "Rejoined" : "New";
+}
+
+export function enrollmentTypeTone(enrollmentType?: Student["enrollmentType"]): StatusTone {
+  return enrollmentType === "REJOIN" ? "info" : "primary";
 }

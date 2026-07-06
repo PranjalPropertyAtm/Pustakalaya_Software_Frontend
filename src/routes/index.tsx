@@ -23,6 +23,10 @@ const ReportsPage = lazy(() => import("@/pages/reports/ReportsPage"));
 const NotificationsPage = lazy(() => import("@/pages/notifications/NotificationsPage"));
 const BranchesPage = lazy(() => import("@/pages/branches/BranchesPage"));
 const CounsellorsPage = lazy(() => import("@/pages/counsellors/CounsellorsPage"));
+const EnquiriesPage = lazy(() => import("@/pages/enquiries/EnquiriesPage"));
+const EnquiryCreatePage = lazy(() => import("@/pages/enquiries/EnquiryCreatePage"));
+const EnquiryDetailPage = lazy(() => import("@/pages/enquiries/EnquiryDetailPage"));
+const EnquiryReportsPage = lazy(() => import("@/pages/enquiries/EnquiryReportsPage"));
 
 function Lazy({ children, withStats }: { children: React.ReactNode; withStats?: boolean }) {
   return (
@@ -80,6 +84,38 @@ export const router = createBrowserRouter([
         ),
       },
       { path: "students/:studentId", element: <Lazy><StudentDetailPage /></Lazy> },
+      {
+        path: "enquiries",
+        element: (
+          <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.COUNSELLOR, ROLES.BRANCH_COUNSELLOR]}>
+            <Lazy withStats><EnquiriesPage /></Lazy>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "enquiries/new",
+        element: (
+          <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.COUNSELLOR, ROLES.BRANCH_COUNSELLOR]}>
+            <Lazy><EnquiryCreatePage /></Lazy>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "enquiries/reports",
+        element: (
+          <ProtectedRoute roles={[ROLES.SUPER_ADMIN]}>
+            <Lazy withStats><EnquiryReportsPage /></Lazy>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "enquiries/:enquiryId",
+        element: (
+          <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.COUNSELLOR, ROLES.BRANCH_COUNSELLOR]}>
+            <Lazy><EnquiryDetailPage /></Lazy>
+          </ProtectedRoute>
+        ),
+      },
       { path: "seats", element: <Lazy><SeatsPage /></Lazy> },
       { path: "plans", element: <Lazy><PlansPage /></Lazy> },
       { path: "payments", element: <Lazy><PaymentsPage /></Lazy> },
