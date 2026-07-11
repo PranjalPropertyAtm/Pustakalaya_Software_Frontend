@@ -80,8 +80,6 @@ export default function EnquiryDetailPage() {
       enquiryId: getEnquiryId(enquiry),
       fullName: enquiry.fullName,
       mobileNumber: enquiry.mobileNumber,
-      parentContact: enquiry.parentContact,
-      parentContactName: enquiry.parentName,
       address: enquiry.address,
       branchId: enquiry.branchId,
       planId: enquiry.interestedPlanId ?? undefined,
@@ -184,8 +182,6 @@ export default function EnquiryDetailPage() {
             <DetailRow label="Mobile" value={enquiry.mobileNumber} />
             <DetailRow label="Alternate mobile" value={enquiry.alternateMobile} />
             <DetailRow label="Email" value={enquiry.email} />
-            <DetailRow label="Parent name" value={enquiry.parentName} />
-            <DetailRow label="Parent contact" value={enquiry.parentContact} />
             <DetailRow label="Address" value={enquiry.address} />
           </div>
         </SectionCard>

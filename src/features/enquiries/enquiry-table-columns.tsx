@@ -48,8 +48,6 @@ const EnquiryActionsCell = memo(function EnquiryActionsCell({ enquiry }: { enqui
     enquiryId: id,
     fullName: enquiry.fullName,
     mobileNumber: enquiry.mobileNumber,
-    parentContact: enquiry.parentContact,
-    parentContactName: enquiry.parentName,
     address: enquiry.address,
     branchId: enquiry.branchId,
     planId: enquiry.interestedPlanId ?? undefined,

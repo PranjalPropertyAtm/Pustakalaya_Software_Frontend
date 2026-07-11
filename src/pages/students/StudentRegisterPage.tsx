@@ -68,11 +68,6 @@ export default function StudentRegisterPage() {
     if (!enquiryPrefill) return;
     if (enquiryPrefill.fullName) form.setValue("fullName", enquiryPrefill.fullName);
     if (enquiryPrefill.mobileNumber) form.setValue("mobileNumber", enquiryPrefill.mobileNumber);
-    if (enquiryPrefill.parentContact) form.setValue("parentContact", enquiryPrefill.parentContact);
-    if (enquiryPrefill.parentContactName) {
-      form.setValue("parentContactName", enquiryPrefill.parentContactName);
-      form.setValue("parentContactRelation", "OTHER");
-    }
     if (enquiryPrefill.address) form.setValue("address", enquiryPrefill.address);
     if (enquiryPrefill.branchId) form.setValue("branchId", enquiryPrefill.branchId);
     if (enquiryPrefill.planId) form.setValue("planId", enquiryPrefill.planId);

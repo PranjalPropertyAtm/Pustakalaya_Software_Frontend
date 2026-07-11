@@ -52,8 +52,6 @@ export interface Enquiry {
   fullName: string;
   mobileNumber: string;
   alternateMobile?: string;
-  parentName?: string;
-  parentContact?: string;
   email?: string;
   age?: number | null;
   gender?: EnquiryGender | null;
@@ -140,9 +138,7 @@ export interface EnquiryTimelineEvent {
 }
 
 export interface EnquiryDashboardMetrics {
-  newEnquiries: number;
-  todaysFollowUps: number;
-  overdueFollowUps: number;
+  totalEnquiries: number;
   interestedStudents: number;
   convertedThisMonth: number;
   conversionRate: number;
@@ -182,8 +178,6 @@ export interface EnquiryPrefillState {
   enquiryId: string;
   fullName?: string;
   mobileNumber?: string;
-  parentContact?: string;
-  parentContactName?: string;
   address?: string;
   branchId?: string;
   planId?: string;

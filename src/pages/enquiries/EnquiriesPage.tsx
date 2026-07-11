@@ -4,8 +4,6 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Plus,
   ClipboardList,
-  Clock,
-  AlertTriangle,
   Heart,
   TrendingUp,
   BarChart3,
@@ -175,24 +173,12 @@ export default function EnquiriesPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard
-          title="New enquiries"
-          value={dashboard?.newEnquiries ?? 0}
+          title="Total enquiries"
+          value={dashboard?.totalEnquiries ?? 0}
           icon={ClipboardList}
           accent="primary"
-        />
-        <StatsCard
-          title="Today's follow-ups"
-          value={dashboard?.todaysFollowUps ?? 0}
-          icon={Clock}
-          accent="secondary"
-        />
-        <StatsCard
-          title="Overdue follow-ups"
-          value={dashboard?.overdueFollowUps ?? 0}
-          icon={AlertTriangle}
-          accent="neutral"
         />
         <StatsCard
           title="Interested"
