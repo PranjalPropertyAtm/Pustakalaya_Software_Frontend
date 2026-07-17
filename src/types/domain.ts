@@ -185,12 +185,21 @@ export interface Payment {
   metadata?: Record<string, unknown>;
   createdAt?: string;
   updatedAt?: string;
+  membershipStartDate?: string | null;
+  registeredOn?: string | null;
   student?: {
     id: string;
     studentCode: string;
     fullName: string;
     mobileNumber: string;
+    startDate?: string;
+    registeredAt?: string;
   };
+  registration?: {
+    id: string;
+    startDate: string;
+    registeredAt?: string;
+  } | null;
   branch?: {
     id: string;
     name: string;

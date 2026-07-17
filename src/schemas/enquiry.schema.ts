@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { mobileNumberSchema, optionalMobileSchema } from "@/schemas/zodHelpers";
+import { mobileNumberSchema } from "@/schemas/zodHelpers";
 
 const objectId = z.string().trim().regex(/^[0-9a-fA-F]{24}$/, "Invalid selection");
 
@@ -63,8 +63,6 @@ const timeString = z
 export const enquiryFormSchema = z.object({
   fullName: z.string().trim().min(2, "Full name is required").max(120),
   mobileNumber: mobileNumberSchema,
-  alternateMobile: optionalMobileSchema,
-  email: z.string().trim().email().optional().or(z.literal("")),
   age: z.string().trim().optional().or(z.literal("")),
   gender: z.enum(genderValues).optional().nullable().or(z.literal("")),
   branchId: objectId,
@@ -126,8 +124,6 @@ export function createEnquiryDefaultValues(branchId = ""): EnquiryFormValues {
   return {
     fullName: "",
     mobileNumber: "",
-    alternateMobile: "",
-    email: "",
     age: "",
     gender: "",
     branchId,
@@ -148,8 +144,6 @@ export function createEnquiryDefaultValues(branchId = ""): EnquiryFormValues {
 export function enquiryToFormValues(enquiry: {
   fullName: string;
   mobileNumber: string;
-  alternateMobile?: string;
-  email?: string;
   age?: number | null;
   gender?: string | null;
   branchId: string;
@@ -168,8 +162,6 @@ export function enquiryToFormValues(enquiry: {
   return {
     fullName: enquiry.fullName,
     mobileNumber: enquiry.mobileNumber,
-    alternateMobile: enquiry.alternateMobile ?? "",
-    email: enquiry.email ?? "",
     age: enquiry.age != null ? String(enquiry.age) : "",
     gender: (enquiry.gender as EnquiryFormValues["gender"]) ?? "",
     branchId: enquiry.branchId,

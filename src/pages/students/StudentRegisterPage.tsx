@@ -73,7 +73,6 @@ export default function StudentRegisterPage() {
     if (enquiryPrefill.planId) form.setValue("planId", enquiryPrefill.planId);
     if (enquiryPrefill.shiftCode) form.setValue("shiftCode", enquiryPrefill.shiftCode);
     if (enquiryPrefill.notes) form.setValue("notes", enquiryPrefill.notes);
-    if (enquiryPrefill.email) form.setValue("email", enquiryPrefill.email);
     if (enquiryPrefill.expectedJoiningDate) {
       form.setValue("joiningDate", enquiryPrefill.expectedJoiningDate);
       form.setValue("startDate", enquiryPrefill.expectedJoiningDate);

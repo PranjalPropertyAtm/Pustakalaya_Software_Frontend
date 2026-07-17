@@ -9,20 +9,54 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ErrorState } from "@/components/common/ErrorState";
 import { CollectPaymentForm } from "@/features/payments/CollectPaymentForm";
 import { useSearchParams } from "react-router-dom";
-import { DataTable, DataTableToolbar } from "@/components/data-table";
+import { DataTable, DataTableToolbar, DataTableFilters } from "@/components/data-table";
 import { getPaymentColumns } from "@/features/payments/payment-table-columns";
 import { SectionCard } from "@/components/shared/SectionCard";
+import { FilterDropdown } from "@/components/shared/FilterDropdown";
+import { TableDateRangeFilter } from "@/components/shared/TableDateRangeFilter";
 import { exportToCsv } from "@/lib/export";
-import { getPaymentId } from "@/lib/payment";
+import {
+  getPaymentId,
+  getPaymentMembershipStartDate,
+  getPaymentRegisteredOn,
+} from "@/lib/payment";
 import { listQueryOptions } from "@/lib/queryDefaults";
 import { useDebounce } from "@/hooks/useDebounce";
 import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
+import {
+  PAYMENT_METHODS,
+  PAYMENT_STATUSES,
+  PAYMENT_TYPES,
+  type PaymentStatus,
+  type PaymentType,
+} from "@/lib/constants";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { formatDate } from "@/lib/utils";
+import type { Payment } from "@/types/domain";
+
+type StatusFilter = "all" | PaymentStatus;
+type TypeFilter = "all" | PaymentType;
+type ModeFilter = "all" | (typeof PAYMENT_METHODS)[number];
 
 export default function PaymentsPage() {
   const { branchQuery } = useBranchContext();
   const [tab, setTab] = useState("list");
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [paymentMode, setPaymentMode] = useState<ModeFilter>("all");
+  const [type, setType] = useState<TypeFilter>("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [membershipFrom, setMembershipFrom] = useState("");
+  const [membershipTo, setMembershipTo] = useState("");
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -52,8 +86,15 @@ export default function PaymentsPage() {
       page: pageIndex + 1,
     };
     if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+    if (status !== "all") params.status = status;
+    if (paymentMode !== "all") params.paymentMode = paymentMode;
+    if (type !== "all") params.type = type;
+    if (dateFrom) params.from = dateFrom;
+    if (dateTo) params.to = dateTo;
+    if (membershipFrom) params.membershipFrom = membershipFrom;
+    if (membershipTo) params.membershipTo = membershipTo;
     return params;
-  }, [branchQuery, pageSize, pageIndex, debouncedSearch]);
+  }, [branchQuery, pageSize, pageIndex, debouncedSearch, status, paymentMode, type, dateFrom, dateTo, membershipFrom, membershipTo]);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: queryKeys.payments.list(listParams),
@@ -62,7 +103,27 @@ export default function PaymentsPage() {
   });
 
   const payments = data?.items ?? [];
-  const total = data?.total ?? payments.length;
+  const total = data?.pagination?.total ?? payments.length;
+
+  const filterCount = [
+    status !== "all",
+    paymentMode !== "all",
+    type !== "all",
+    dateFrom || dateTo,
+    membershipFrom || membershipTo,
+  ].filter(Boolean).length;
+
+  const clearFilters = () => {
+    setSearch("");
+    setStatus("all");
+    setPaymentMode("all");
+    setType("all");
+    setDateFrom("");
+    setDateTo("");
+    setMembershipFrom("");
+    setMembershipTo("");
+    setPageIndex(0);
+  };
 
   const handleExport = async () => {
     if (payments.length === 0) {
@@ -72,6 +133,28 @@ export default function PaymentsPage() {
     await exportToCsv(
       payments as unknown as Record<string, unknown>[],
       [
+        { key: "paidAt", header: "Paid on", format: (r) => formatDate(String((r as { paidAt?: string }).paidAt ?? "")) },
+        {
+          key: "student",
+          header: "Student",
+          format: (r) => String((r as { student?: { fullName?: string } }).student?.fullName ?? ""),
+        },
+        {
+          key: "registeredOn",
+          header: "Registered on",
+          format: (r) => {
+            const v = getPaymentRegisteredOn(r as unknown as Payment);
+            return v ? formatDate(v) : "";
+          },
+        },
+        {
+          key: "membershipStartDate",
+          header: "Membership start",
+          format: (r) => {
+            const v = getPaymentMembershipStartDate(r as unknown as Payment);
+            return v ? formatDate(v) : "";
+          },
+        },
         { key: "amount", header: "Amount" },
         { key: "status", header: "Status" },
         { key: "paymentMode", header: "Mode" },
@@ -120,8 +203,112 @@ export default function PaymentsPage() {
                     setSearch(v);
                     setPageIndex(0);
                   }}
-                  searchPlaceholder="Search student, mode, status…"
+                  searchPlaceholder="Search student, payment no., reference…"
                   onExport={handleExport}
+                  filters={
+                    <DataTableFilters>
+                      <FilterDropdown label="Filters" activeCount={filterCount} onClear={clearFilters}>
+                        <div className="space-y-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Status</Label>
+                            <Select
+                              value={status}
+                              onValueChange={(v) => {
+                                setStatus(v as StatusFilter);
+                                setPageIndex(0);
+                              }}
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue placeholder="Status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All statuses</SelectItem>
+                                {PAYMENT_STATUSES.map((s) => (
+                                  <SelectItem key={s.value} value={s.value}>
+                                    {s.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Payment mode</Label>
+                            <Select
+                              value={paymentMode}
+                              onValueChange={(v) => {
+                                setPaymentMode(v as ModeFilter);
+                                setPageIndex(0);
+                              }}
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue placeholder="Mode" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All modes</SelectItem>
+                                {PAYMENT_METHODS.map((mode) => (
+                                  <SelectItem key={mode} value={mode}>
+                                    {mode.replace(/_/g, " ")}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Payment type</Label>
+                            <Select
+                              value={type}
+                              onValueChange={(v) => {
+                                setType(v as TypeFilter);
+                                setPageIndex(0);
+                              }}
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue placeholder="Type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All types</SelectItem>
+                                {PAYMENT_TYPES.map((t) => (
+                                  <SelectItem key={t.value} value={t.value}>
+                                    {t.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Paid on</Label>
+                            <TableDateRangeFilter
+                              from={dateFrom}
+                              to={dateTo}
+                              onFromChange={(v) => {
+                                setDateFrom(v);
+                                setPageIndex(0);
+                              }}
+                              onToChange={(v) => {
+                                setDateTo(v);
+                                setPageIndex(0);
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Membership start</Label>
+                            <TableDateRangeFilter
+                              from={membershipFrom}
+                              to={membershipTo}
+                              onFromChange={(v) => {
+                                setMembershipFrom(v);
+                                setPageIndex(0);
+                              }}
+                              onToChange={(v) => {
+                                setMembershipTo(v);
+                                setPageIndex(0);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </FilterDropdown>
+                    </DataTableFilters>
+                  }
                 />
               )}
             />

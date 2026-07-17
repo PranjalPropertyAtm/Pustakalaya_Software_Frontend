@@ -51,8 +51,6 @@ export interface Enquiry {
   enquiryCode: string;
   fullName: string;
   mobileNumber: string;
-  alternateMobile?: string;
-  email?: string;
   age?: number | null;
   gender?: EnquiryGender | null;
   branchId: string;
@@ -183,6 +181,5 @@ export interface EnquiryPrefillState {
   planId?: string;
   shiftCode?: "A" | "B";
   notes?: string;
-  email?: string;
   expectedJoiningDate?: string;
 }

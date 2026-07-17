@@ -53,7 +53,6 @@ const EnquiryActionsCell = memo(function EnquiryActionsCell({ enquiry }: { enqui
     planId: enquiry.interestedPlanId ?? undefined,
     shiftCode: enquiry.preferredShift ?? undefined,
     notes: enquiry.remarks,
-    email: enquiry.email,
     expectedJoiningDate: enquiry.expectedJoiningDate
       ? new Date(enquiry.expectedJoiningDate).toISOString().slice(0, 10)
       : undefined,

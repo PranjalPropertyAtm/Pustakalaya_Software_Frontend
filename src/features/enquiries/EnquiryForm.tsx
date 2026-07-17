@@ -74,8 +74,6 @@ export function EnquiryForm({ enquiry, onSuccess, submitLabel = "Save enquiry" }
       const body: Record<string, unknown> = {
         ...values,
         age: parsedAge && !Number.isNaN(parsedAge) ? parsedAge : null,
-        alternateMobile: values.alternateMobile || undefined,
-        email: values.email || undefined,
         gender: values.gender || null,
         interestedPlanId: values.interestedPlanId || null,
         preferredShift: values.preferredShift || null,
@@ -109,12 +107,6 @@ export function EnquiryForm({ enquiry, onSuccess, submitLabel = "Save enquiry" }
         </FormField>
         <FormField label="Mobile number" error={form.formState.errors.mobileNumber} required>
           <MobileInput {...form.register("mobileNumber", mobileFieldRules)} disabled={terminal} />
-        </FormField>
-        <FormField label="Alternate mobile" error={form.formState.errors.alternateMobile}>
-          <MobileInput {...form.register("alternateMobile", mobileFieldRules)} disabled={terminal} />
-        </FormField>
-        <FormField label="Email" error={form.formState.errors.email}>
-          <Input type="email" {...form.register("email")} disabled={terminal} />
         </FormField>
         <FormField label="Age" error={form.formState.errors.age}>
           <Input type="number" min={1} max={120} {...form.register("age")} disabled={terminal} />

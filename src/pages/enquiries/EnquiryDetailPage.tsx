@@ -85,7 +85,6 @@ export default function EnquiryDetailPage() {
       planId: enquiry.interestedPlanId ?? undefined,
       shiftCode: enquiry.preferredShift ?? undefined,
       notes: enquiry.remarks,
-      email: enquiry.email,
       expectedJoiningDate: enquiry.expectedJoiningDate
         ? new Date(enquiry.expectedJoiningDate).toISOString().slice(0, 10)
         : undefined,
@@ -180,8 +179,6 @@ export default function EnquiryDetailPage() {
         <SectionCard title="Contact details">
           <div className="grid gap-4 sm:grid-cols-2">
             <DetailRow label="Mobile" value={enquiry.mobileNumber} />
-            <DetailRow label="Alternate mobile" value={enquiry.alternateMobile} />
-            <DetailRow label="Email" value={enquiry.email} />
             <DetailRow label="Address" value={enquiry.address} />
           </div>
         </SectionCard>

@@ -7,6 +7,25 @@ export const ROLES = {
 export type Role = (typeof ROLES)[keyof typeof ROLES];
 
 export const PAYMENT_METHODS = ["CASH", "UPI", "CARD", "BANK_TRANSFER", "OTHER"] as const;
+
+/** Must match backend constants/payments.js */
+export const PAYMENT_STATUSES = [
+  { value: "pending", label: "Pending" },
+  { value: "completed", label: "Completed" },
+  { value: "failed", label: "Failed" },
+  { value: "refunded", label: "Refunded" },
+] as const;
+
+export const PAYMENT_TYPES = [
+  { value: "registration", label: "Registration" },
+  { value: "renewal", label: "Renewal" },
+  { value: "partial", label: "Partial" },
+  { value: "adjustment", label: "Adjustment" },
+  { value: "other", label: "Other" },
+] as const;
+
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number]["value"];
+export type PaymentType = (typeof PAYMENT_TYPES)[number]["value"];
 export const SHIFT_CODES = ["A", "B"] as const;
 
 /** Must match backend constants/parentContact.js */

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import type { Payment } from "@/types/domain";
 import { StatusBadge, statusToneFromValue } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { getPaymentDate, getPaymentId } from "@/lib/payment";
+import { getPaymentDate, getPaymentId, getPaymentMembershipStartDate, getPaymentRegisteredOn } from "@/lib/payment";
 import { getStudentId } from "@/lib/student";
 import { DEFAULT_CURRENCY } from "@/lib/constants";
 
@@ -58,6 +58,27 @@ export function getPaymentColumns(
       },
     });
   }
+
+  cols.push(
+    {
+      id: "registeredOn",
+      header: "Registered on",
+      accessorFn: (row) => getPaymentRegisteredOn(row) ?? "",
+      cell: ({ getValue }) => {
+        const v = getValue() as string | undefined;
+        return v ? <span className="whitespace-nowrap tabular-nums">{formatDate(v)}</span> : "—";
+      },
+    },
+    {
+      id: "membershipStartDate",
+      header: "Membership start",
+      accessorFn: (row) => getPaymentMembershipStartDate(row) ?? "",
+      cell: ({ getValue }) => {
+        const v = getValue() as string | undefined;
+        return v ? <span className="whitespace-nowrap tabular-nums">{formatDate(v)}</span> : "—";
+      },
+    }
+  );
 
   cols.push(
     {
