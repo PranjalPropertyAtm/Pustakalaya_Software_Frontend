@@ -44,6 +44,7 @@ import type { Payment } from "@/types/domain";
 type StatusFilter = "all" | PaymentStatus;
 type TypeFilter = "all" | PaymentType;
 type ModeFilter = "all" | (typeof PAYMENT_METHODS)[number];
+type PaymentSortBy = "paidAt" | "amount" | "createdAt";
 
 export default function PaymentsPage() {
   const { branchQuery } = useBranchContext();
@@ -57,6 +58,8 @@ export default function PaymentsPage() {
   const [dateTo, setDateTo] = useState("");
   const [membershipFrom, setMembershipFrom] = useState("");
   const [membershipTo, setMembershipTo] = useState("");
+  const [sortBy, setSortBy] = useState<PaymentSortBy>("paidAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -93,8 +96,10 @@ export default function PaymentsPage() {
     if (dateTo) params.to = dateTo;
     if (membershipFrom) params.membershipFrom = membershipFrom;
     if (membershipTo) params.membershipTo = membershipTo;
+    params.sortBy = sortBy;
+    params.sortOrder = sortOrder;
     return params;
-  }, [branchQuery, pageSize, pageIndex, debouncedSearch, status, paymentMode, type, dateFrom, dateTo, membershipFrom, membershipTo]);
+  }, [branchQuery, pageSize, pageIndex, debouncedSearch, status, paymentMode, type, dateFrom, dateTo, membershipFrom, membershipTo, sortBy, sortOrder]);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: queryKeys.payments.list(listParams),
@@ -111,6 +116,7 @@ export default function PaymentsPage() {
     type !== "all",
     dateFrom || dateTo,
     membershipFrom || membershipTo,
+    sortBy !== "paidAt" || sortOrder !== "desc",
   ].filter(Boolean).length;
 
   const clearFilters = () => {
@@ -122,6 +128,8 @@ export default function PaymentsPage() {
     setDateTo("");
     setMembershipFrom("");
     setMembershipTo("");
+    setSortBy("paidAt");
+    setSortOrder("desc");
     setPageIndex(0);
   };
 
@@ -304,6 +312,45 @@ export default function PaymentsPage() {
                                 setPageIndex(0);
                               }}
                             />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Sort</Label>
+                              <Select
+                                value={sortBy}
+                                onValueChange={(v) => {
+                                  setSortBy(v as PaymentSortBy);
+                                  setPageIndex(0);
+                                }}
+                              >
+                                <SelectTrigger className="h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="paidAt">Paid on</SelectItem>
+                                  <SelectItem value="amount">Amount</SelectItem>
+                                  <SelectItem value="createdAt">Recorded</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Order</Label>
+                              <Select
+                                value={sortOrder}
+                                onValueChange={(v) => {
+                                  setSortOrder(v as "asc" | "desc");
+                                  setPageIndex(0);
+                                }}
+                              >
+                                <SelectTrigger className="h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="asc">Asc</SelectItem>
+                                  <SelectItem value="desc">Desc</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
                         </div>
                       </FilterDropdown>
