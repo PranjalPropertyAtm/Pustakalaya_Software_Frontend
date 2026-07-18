@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { paymentsService } from "@/api/services";
 import { queryKeys } from "@/lib/queryKeys";
@@ -14,23 +14,28 @@ import { ApiClientError } from "@/api/client";
 import { typography } from "@/lib/typography";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { formatParentContact } from "@/lib/student";
-import { Loader2, User } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Loader2, User, ArrowLeft } from "lucide-react";
 
 interface CollectPaymentFormProps {
   onSuccess?: () => void;
+  onBack?: () => void;
+  backTo?: string;
   initialStudentLookup?: string;
   initialRenewalId?: string;
 }
 
 export function CollectPaymentForm({
   onSuccess,
+  onBack,
+  backTo,
   initialStudentLookup,
   initialRenewalId,
 }: CollectPaymentFormProps) {
+  const queryClient = useQueryClient();
   const [studentLookup, setStudentLookup] = useState("");
   const [debouncedLookup, setDebouncedLookup] = useState("");
   const [resolvedStudentId, setResolvedStudentId] = useState("");
-  const [amount, setAmount] = useState("");
   const [paymentMode, setPaymentMode] = useState("CASH");
   const [reference, setReference] = useState("");
   const [proof, setProof] = useState<File | null>(null);
@@ -57,10 +62,11 @@ export function CollectPaymentForm({
   useEffect(() => {
     if (!debouncedLookup) {
       setResolvedStudentId("");
-      setAmount("");
       setRenewalId("");
     }
   }, [debouncedLookup]);
+
+  const renewalIdForSummary = initialRenewalId?.trim() || renewalId || undefined;
 
   const {
     data: summary,
@@ -68,11 +74,14 @@ export function CollectPaymentForm({
     isError,
     error,
   } = useQuery({
-    queryKey: queryKeys.payments.studentSummary(debouncedLookup),
-    queryFn: () => paymentsService.getSummary(debouncedLookup),
+    queryKey: queryKeys.payments.studentSummary(debouncedLookup, renewalIdForSummary),
+    queryFn: () => paymentsService.getSummary(debouncedLookup, renewalIdForSummary),
     enabled: debouncedLookup.length >= 3,
     retry: false,
   });
+
+  const collectAmount = summary?.suggestedAmount ?? null;
+  const canCollect = Boolean(resolvedStudentId && collectAmount != null && collectAmount > 0);
 
   useEffect(() => {
     if (!summary) {
@@ -80,22 +89,22 @@ export function CollectPaymentForm({
       return;
     }
     setResolvedStudentId(summary.studentId);
-    if (summary.suggestedAmount != null && summary.suggestedAmount > 0) {
-      setAmount(String(summary.suggestedAmount));
-    }
     if (initialRenewalId?.trim()) {
       setRenewalId(initialRenewalId.trim());
       return;
     }
     if (summary.activeRenewal?.id) setRenewalId(summary.activeRenewal.id);
     else setRenewalId("");
-  }, [summary]);
+  }, [summary, initialRenewalId]);
 
   const mutation = useMutation({
     mutationFn: () => {
+      if (collectAmount == null) {
+        throw new Error("No payable amount for this student");
+      }
       const fd = new FormData();
       fd.append("studentId", resolvedStudentId);
-      fd.append("amount", amount);
+      fd.append("amount", String(collectAmount));
       fd.append("paymentMode", paymentMode);
       if (summary?.currency) fd.append("currency", summary.currency);
       const ref = reference.trim();
@@ -109,10 +118,12 @@ export function CollectPaymentForm({
       setStudentLookup("");
       setDebouncedLookup("");
       setResolvedStudentId("");
-      setAmount("");
       setRenewalId("");
       setProof(null);
       setProofError(null);
+      void queryClient.invalidateQueries({ queryKey: ["renewals"], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["students"], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["payments"], exact: false });
       onSuccess?.();
     },
     onError: (err) =>
@@ -125,7 +136,23 @@ export function CollectPaymentForm({
       : undefined;
 
   return (
-    <Card className="max-w-lg">
+    <div className="max-w-lg space-y-3">
+      {(backTo || onBack) && (
+        backTo ? (
+          <Button variant="ghost" size="sm" asChild className="-ml-2">
+            <Link to={backTo}>
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Link>
+          </Button>
+        ) : (
+          <Button variant="ghost" size="sm" className="-ml-2" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+        )
+      )}
+      <Card>
       <CardHeader>
         <CardTitle className="text-base">Collect payment</CardTitle>
       </CardHeader>
@@ -200,8 +227,13 @@ export function CollectPaymentForm({
             </div>
             {summary.suggestedAmount != null && summary.suggestedAmount > 0 && (
               <p className="text-sm font-medium text-primary pt-1 border-t border-border/60">
-                {summary.suggestedAmountLabel ?? "Suggested amount"}:{" "}
+                {summary.suggestedAmountLabel ?? "Amount due"}:{" "}
                 {formatCurrency(summary.suggestedAmount, summary.currency)}
+              </p>
+            )}
+            {summary.suggestedAmount == null && (
+              <p className="text-sm text-muted-foreground pt-1 border-t border-border/60">
+                No payment is due for this student.
               </p>
             )}
             {summary.activeRenewal && (
@@ -218,15 +250,29 @@ export function CollectPaymentForm({
           </div>
         )}
 
-        <FormField label="Amount" required>
-          <Input
-            type="number"
-            min={0}
-            step="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-        </FormField>
+        {summary && (
+          <FormField
+            label="Amount"
+            required
+            hint={
+              canCollect
+                ? (summary.suggestedAmountLabel ?? "Fixed amount based on pending renewal or registration fee")
+                : "Payment can only be recorded when an amount is due"
+            }
+          >
+            <Input
+              type="text"
+              readOnly
+              disabled
+              value={
+                collectAmount != null && collectAmount > 0
+                  ? formatCurrency(collectAmount, summary.currency)
+                  : "—"
+              }
+              className="bg-muted/50"
+            />
+          </FormField>
+        )}
         <FormField label="Payment mode" required>
           <Select value={paymentMode} onValueChange={setPaymentMode}>
             <SelectTrigger>
@@ -263,11 +309,12 @@ export function CollectPaymentForm({
             }
             mutation.mutate();
           }}
-          disabled={!resolvedStudentId || !amount || !proof || mutation.isPending}
+          disabled={!canCollect || !proof || mutation.isPending}
         >
           {mutation.isPending ? "Saving..." : "Record payment"}
         </Button>
       </CardContent>
     </Card>
+    </div>
   );
 }

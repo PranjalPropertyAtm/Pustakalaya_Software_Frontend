@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useForm, Controller, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { studentsService, branchesService, seatsService, plansService, enquiriesService } from "@/api/services";
 import {
@@ -41,12 +42,23 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { compressImageFile } from "@/lib/compressImage";
 import type { EnquiryPrefillState } from "@/types/enquiry";
+import { resolveStudentsListReturnSearch } from "@/lib/studentsListUrl";
+
+type RegisterNavState = {
+  enquiryPrefill?: EnquiryPrefillState;
+  returnTo?: string;
+};
 
 export default function StudentRegisterPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const enquiryPrefill = (location.state as { enquiryPrefill?: EnquiryPrefillState } | null)
-    ?.enquiryPrefill;
+  const navState = location.state as RegisterNavState | null;
+  const enquiryPrefill = navState?.enquiryPrefill;
+  const returnPath =
+    navState?.returnTo ??
+    (enquiryPrefill?.enquiryId
+      ? `/enquiries/${enquiryPrefill.enquiryId}`
+      : `/students${resolveStudentsListReturnSearch(location.state)}`);
   const { effectiveBranchId, isSuperAdmin } = useBranchContext();
   const [photo, setPhoto] = useState<File | null>(null);
   const [idProof, setIdProof] = useState<File | null>(null);
@@ -252,6 +264,14 @@ export default function StudentRegisterPage() {
 
   return (
     <div className="space-y-6 max-w-4xl">
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="sm" asChild className="-ml-2">
+          <Link to={returnPath}>
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back
+          </Link>
+        </Button>
+      </div>
       <PageHeader
         title="Student Registration"
         description={

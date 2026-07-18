@@ -9,8 +9,10 @@ export const paymentsService = {
     ),
   collect: (formData: FormData) =>
     unwrap(apiClient.post(endpoints.payments, formData)),
-  getSummary: (studentIdOrCode: string) =>
+  getSummary: (studentIdOrCode: string, renewalId?: string) =>
     unwrap<StudentPaymentSummary>(
-      apiClient.get(endpoints.paymentSummary(encodeURIComponent(studentIdOrCode.trim())))
+      apiClient.get(endpoints.paymentSummary(encodeURIComponent(studentIdOrCode.trim())), {
+        params: renewalId ? { renewalId } : undefined,
+      })
     ),
 };

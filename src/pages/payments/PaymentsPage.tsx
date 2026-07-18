@@ -21,6 +21,7 @@ import {
   getPaymentRegisteredOn,
 } from "@/lib/payment";
 import { listQueryOptions } from "@/lib/queryDefaults";
+import { RENEWALS_RETURN_PATH } from "@/lib/studentsListUrl";
 import { useDebounce } from "@/hooks/useDebounce";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
@@ -77,6 +78,26 @@ export default function PaymentsPage() {
   const initialTab = searchParams.get("tab");
   const initialStudentId = searchParams.get("studentId") ?? undefined;
   const initialRenewalId = searchParams.get("renewalId") ?? undefined;
+  const collectReturnTo = searchParams.get("returnTo") ?? undefined;
+
+  const clearCollectSearchParams = () => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("tab");
+      next.delete("studentId");
+      next.delete("renewalId");
+      next.delete("returnTo");
+      return next;
+    });
+  };
+
+  const handleCollectBack = () => {
+    setTab("list");
+    clearCollectSearchParams();
+  };
+
+  const collectBackTo =
+    collectReturnTo ?? (initialRenewalId ? RENEWALS_RETURN_PATH : undefined);
 
   useEffect(() => {
     if (initialTab === "collect") setTab("collect");
@@ -365,16 +386,12 @@ export default function PaymentsPage() {
           <CollectPaymentForm
             initialStudentLookup={initialStudentId}
             initialRenewalId={initialRenewalId}
+            backTo={collectBackTo}
+            onBack={collectBackTo ? undefined : handleCollectBack}
             onSuccess={() => {
               setTab("list");
               refetch();
-              setSearchParams((prev) => {
-                const next = new URLSearchParams(prev);
-                next.delete("tab");
-                next.delete("studentId");
-                next.delete("renewalId");
-                return next;
-              });
+              clearCollectSearchParams();
             }}
           />
         </TabsContent>

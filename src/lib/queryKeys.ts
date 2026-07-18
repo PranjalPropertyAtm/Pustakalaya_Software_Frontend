@@ -24,7 +24,8 @@ export const queryKeys = {
   },
   payments: {
     list: (params?: Record<string, unknown>) => ["payments", "list", params] as const,
-    studentSummary: (studentIdOrCode: string) => ["payments", "student-summary", studentIdOrCode] as const,
+    studentSummary: (studentIdOrCode: string, renewalId?: string) =>
+      ["payments", "student-summary", studentIdOrCode, renewalId ?? null] as const,
   },
   renewals: {
     list: (params?: Record<string, unknown>) => ["renewals", "list", params] as const,
