@@ -20,12 +20,14 @@ export const endpoints = {
   studentMedia: (id: string) => `${API}/students/${id}/media`,
   studentRegistrationMedia: (id: string) => `${API}/students/${id}/registration-media`,
   studentSeat: (id: string) => `${API}/students/${id}/seat`,
+  studentPlan: (id: string) => `${API}/students/${id}/plan`,
   studentRegistrations: (id: string) => `${API}/students/${id}/registrations`,
   studentReceipts: `${API}/students/receipts`,
   studentReceipt: (studentId: string, receiptId: string) =>
     `${API}/students/${studentId}/receipts/${receiptId}`,
   studentReceiptRender: (studentId: string, receiptId: string) =>
     `${API}/students/${studentId}/receipts/${receiptId}/render`,
+  studentReceiptRegenerate: (studentId: string) => `${API}/students/${studentId}/receipts/regenerate`,
   plans: `${API}/plans`,
   plan: (id: string) => `${API}/plans/${id}`,
   planPricing: (id: string) => `${API}/plans/${id}/pricing`,

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { LazyImage } from "@/components/common/LazyImage";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Calendar,
@@ -14,6 +14,7 @@ import {
   FileText,
   ExternalLink,
   IndianRupee,
+  RefreshCw,
 } from "lucide-react";
 import { studentsService, paymentsService, receiptsService } from "@/api/services";
 import { ReceiptActions } from "@/components/receipts/ReceiptActions";
@@ -32,11 +33,14 @@ import { studentRenewalDisplay } from "@/lib/studentRenewal";
 import { StatusBadge, type StatusTone } from "@/components/shared/StatusBadge";
 import { PaymentHistoryList } from "@/components/payments/PaymentHistoryList";
 import { ChangeStudentSeatDialog } from "@/features/students/ChangeStudentSeatDialog";
+import { ChangeStudentPlanDialog } from "@/features/students/ChangeStudentPlanDialog";
 import { EditStudentDialog } from "@/features/students/EditStudentDialog";
 import { DeleteStudentDialog } from "@/features/students/DeleteStudentDialog";
 import { useAuthStore } from "@/stores/authStore";
 import { ROLES } from "@/lib/constants";
 import { resolveStudentDetailReturnPath } from "@/lib/studentsListUrl";
+import { toast } from "sonner";
+import { ApiClientError } from "@/api/client";
 
 function DetailRow({ label, value }: { label: string; value?: React.ReactNode }) {
   if (value === undefined || value === null || value === "") return null;
@@ -55,6 +59,7 @@ export default function StudentDetailPage() {
   const { studentId = "" } = useParams();
   const isSuperAdmin = useAuthStore((s) => s.user?.role === ROLES.SUPER_ADMIN);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const {
     data: student,
@@ -85,6 +90,17 @@ export default function StudentDetailPage() {
     enabled: Boolean(studentId),
   });
 
+  const regenerateReceiptMutation = useMutation({
+    mutationFn: () => receiptsService.regenerate(studentId),
+    onSuccess: (receipt) => {
+      toast.success(`New receipt ${receipt.receiptNumber} issued`);
+      queryClient.invalidateQueries({ queryKey: queryKeys.receipts.list({ studentId }) });
+    },
+    onError: (err) => {
+      toast.error(err instanceof ApiClientError ? err.message : "Could not regenerate receipt");
+    },
+  });
+
   if (!studentId) {
     return <ErrorState message="Invalid student" />;
   }
@@ -107,6 +123,9 @@ export default function StudentDetailPage() {
   const payments = paymentsData?.items ?? [];
   const receipts = receiptsData?.items ?? [];
   const paidReceiptIds = new Set(receipts.map((receipt) => String(receipt.id)));
+  const canRegenerateReceipt = payments.some(
+    (payment) => payment.status === "completed" && (payment.amount ?? 0) > 0
+  );
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -217,10 +236,13 @@ export default function StudentDetailPage() {
             <DetailRow label="Branch" value={student.branch?.name} />
             <DetailRow label="Plan" value={student.plan?.name} />
             <DetailRow label="Seat" value={student.seat ? `Seat ${student.seat.seatNumber}` : undefined} />
-            <ChangeStudentSeatDialog student={student} onSuccess={refetch} />
+            <div className="flex flex-wrap gap-0">
+              <ChangeStudentSeatDialog student={student} onSuccess={refetch} />
+              <ChangeStudentPlanDialog student={student} onSuccess={refetch} />
+            </div>
             {(student.status === "inactive" || student.status === "expired") && (
               <p className="text-xs text-muted-foreground pt-1">
-                Renew membership before changing seat.
+                Renew membership before changing plan or seat.
               </p>
             )}
             <DetailRow label="Schedule" value={schedule || undefined} />
@@ -274,11 +296,22 @@ export default function StudentDetailPage() {
       )}
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
           <CardTitle className="text-base flex items-center gap-2">
             <FileText className="h-4 w-4" />
             Receipts
           </CardTitle>
+          {canRegenerateReceipt && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={regenerateReceiptMutation.isPending}
+              onClick={() => regenerateReceiptMutation.mutate()}
+            >
+              <RefreshCw className="h-3.5 w-3.5 mr-1" />
+              {regenerateReceiptMutation.isPending ? "Generating…" : "Regenerate receipt"}
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-3">
           {receiptsLoading ? (
@@ -294,7 +327,14 @@ export default function StudentDetailPage() {
                 className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3"
               >
                 <div className="text-sm">
-                  <p className="font-medium">{r.receiptNumber}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium">{r.receiptNumber}</p>
+                    {r.type === "ADJUSTMENT" && (
+                      <Badge variant="secondary" className="text-xs">
+                        Updated
+                      </Badge>
+                    )}
+                  </div>
                   <p className="text-muted-foreground">
                     {r.issuedAt ? formatDate(r.issuedAt) : "—"}
                     {r.totalAmount != null

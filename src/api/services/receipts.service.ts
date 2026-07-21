@@ -9,4 +9,6 @@ export const receiptsService = {
     ),
   getById: (studentId: string, receiptId: string) =>
     unwrap<Receipt>(apiClient.get(endpoints.studentReceipt(studentId, receiptId))),
+  regenerate: (studentId: string) =>
+    unwrap<Receipt>(apiClient.post(endpoints.studentReceiptRegenerate(studentId))),
 };

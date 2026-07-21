@@ -123,7 +123,7 @@ export function EditStudentDialog({
           <DialogDescription>
             {student.studentCode ? `Code: ${student.studentCode}` : student.fullName}
             {" — "}
-            Update contact details and replace photo or ID proof. Plan, seat, and dates use renewals or change seat.
+            Update contact details and replace photo or ID proof. Plan and seat can be changed from the Plan & seat section.
           </DialogDescription>
         </DialogHeader>
         <form

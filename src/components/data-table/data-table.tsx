@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 import type { DataTableServerState } from "./types";
 import type { LucideIcon } from "lucide-react";
 
-const MAX_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 100;
 const ROW_HEIGHT = 52;
 
 interface DataTableProps<TData, TValue> {
