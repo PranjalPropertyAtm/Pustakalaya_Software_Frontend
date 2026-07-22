@@ -167,6 +167,10 @@ export function ChangeStudentPlanDialog({ student, onSuccess }: ChangeStudentPla
     onSuccess: () => {
       toast.success("Plan updated successfully");
       queryClient.invalidateQueries({ queryKey: queryKeys.students.detail(studentId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.registrations(studentId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.payments.studentSummary(studentId) });
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["receipts"] });
       queryClient.invalidateQueries({ queryKey: ["seats"] });
       queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
       setOpen(false);
