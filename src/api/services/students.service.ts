@@ -29,11 +29,13 @@ export const studentsService = {
     unwrap<Student>(apiClient.patch(endpoints.studentMedia(id), formData)),
   changeSeat: (id: string, body: { seatId: string }) =>
     unwrap<Student>(apiClient.patch(endpoints.studentSeat(id), body)),
+  releaseSeat: (id: string) =>
+    unwrap<Student>(apiClient.post(endpoints.studentSeatRelease(id))),
   changePlan: (
     id: string,
     body: {
       planId: string;
-      seatId: string;
+      seatId?: string;
       shiftCode?: string;
       preferredStartTime?: string;
       preferredEndTime?: string;

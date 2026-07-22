@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Unlock } from "lucide-react";
 import { studentsService, plansService, seatsService } from "@/api/services";
 import { queryKeys } from "@/lib/queryKeys";
 import { getStudentId } from "@/lib/student";
@@ -49,7 +49,19 @@ export function ChangeStudentPlanDialog({ student, onSuccess }: ChangeStudentPla
 
   const canChange =
     student.status === "active" &&
-    Boolean(student.currentAllocationId ?? student.currentSeatId);
+    Boolean(student.startDate && student.endDate);
+
+  const { data: liveStudent, refetch: refetchStudent } = useQuery({
+    queryKey: queryKeys.students.detail(studentId),
+    queryFn: () => studentsService.getById(studentId),
+    enabled: open,
+    initialData: student,
+  });
+
+  const activeStudent = liveStudent ?? student;
+  const hasActiveSeat = Boolean(
+    activeStudent.currentAllocationId ?? activeStudent.currentSeatId ?? activeStudent.seat?.id
+  );
 
   const { data: plansData, isLoading: plansLoading, isError: plansError } = useQuery({
     queryKey: queryKeys.plans.list({}),
@@ -85,17 +97,18 @@ export function ChangeStudentPlanDialog({ student, onSuccess }: ChangeStudentPla
     enabled: open && Boolean(branchId && selectedPlanId && (!shiftBased || shiftCode)),
   });
 
-  const currentPlanId = student.currentPlanId ?? student.plan?.id ?? "";
-  const currentSeatId = student.currentSeatId ?? student.seat?.id ?? "";
+  const currentPlanId = activeStudent.currentPlanId ?? activeStudent.plan?.id ?? "";
+  const currentSeatId = activeStudent.currentSeatId ?? activeStudent.seat?.id ?? "";
+  const formerSeatNumber = activeStudent.seat?.seatNumber ?? student.seat?.seatNumber;
 
   useEffect(() => {
     if (!open) return;
     setSelectedPlanId(currentPlanId);
-    setShiftCode(student.currentShiftCode ?? null);
-    setPreferredStartTime(student.preferredStartTime ?? "");
-    setPreferredEndTime(student.preferredEndTime ?? "");
-    setSelectedSeatId(currentSeatId);
-  }, [open, currentPlanId, currentSeatId, student]);
+    setShiftCode(activeStudent.currentShiftCode ?? null);
+    setPreferredStartTime(activeStudent.preferredStartTime ?? "");
+    setPreferredEndTime(activeStudent.preferredEndTime ?? "");
+    setSelectedSeatId(hasActiveSeat ? currentSeatId : "");
+  }, [open, currentPlanId, currentSeatId, activeStudent, hasActiveSeat]);
 
   useEffect(() => {
     if (!open || shiftBased || !preferredStartTime || !durationHours) return;
@@ -113,16 +126,18 @@ export function ChangeStudentPlanDialog({ student, onSuccess }: ChangeStudentPla
 
   const handlePlanChange = (planId: string) => {
     if (planId !== selectedPlanId) {
-      setSelectedSeatId("");
       const nextPlan = plans.find((p) => p.id === planId);
       if (isShiftBasedPlan(nextPlan)) {
-        setShiftCode(student.currentShiftCode ?? "A");
+        setShiftCode(activeStudent.currentShiftCode ?? "A");
         setPreferredStartTime("");
         setPreferredEndTime("");
       } else {
         setShiftCode(null);
-        setPreferredStartTime(student.preferredStartTime ?? "");
-        setPreferredEndTime(student.preferredEndTime ?? "");
+        setPreferredStartTime(activeStudent.preferredStartTime ?? "");
+        setPreferredEndTime(activeStudent.preferredEndTime ?? "");
+      }
+      if (currentSeatId) {
+        setSelectedSeatId(currentSeatId);
       }
     }
     setSelectedPlanId(planId);
@@ -131,10 +146,10 @@ export function ChangeStudentPlanDialog({ student, onSuccess }: ChangeStudentPla
   const hasChanges = useMemo(() => {
     const planChanged = selectedPlanId && selectedPlanId !== currentPlanId;
     const seatChanged = selectedSeatId && selectedSeatId !== currentSeatId;
-    const shiftChanged = (shiftCode ?? null) !== (student.currentShiftCode ?? null);
+    const shiftChanged = (shiftCode ?? null) !== (activeStudent.currentShiftCode ?? null);
     const timesChanged =
-      (preferredStartTime || null) !== (student.preferredStartTime ?? null) ||
-      (preferredEndTime || null) !== (student.preferredEndTime ?? null);
+      (preferredStartTime || null) !== (activeStudent.preferredStartTime ?? null) ||
+      (preferredEndTime || null) !== (activeStudent.preferredEndTime ?? null);
     return planChanged || seatChanged || shiftChanged || timesChanged;
   }, [
     selectedPlanId,
@@ -142,17 +157,33 @@ export function ChangeStudentPlanDialog({ student, onSuccess }: ChangeStudentPla
     selectedSeatId,
     currentSeatId,
     shiftCode,
-    student.currentShiftCode,
+    activeStudent.currentShiftCode,
     preferredStartTime,
     preferredEndTime,
-    student.preferredStartTime,
-    student.preferredEndTime,
+    activeStudent.preferredStartTime,
+    activeStudent.preferredEndTime,
   ]);
 
   const canSubmit =
     Boolean(selectedPlanId && selectedSeatId) &&
     hasChanges &&
     (shiftBased ? Boolean(shiftCode) : Boolean(preferredStartTime && preferredEndTime));
+
+  const releaseSeatMutation = useMutation({
+    mutationFn: () => studentsService.releaseSeat(studentId),
+    onSuccess: () => {
+      toast.success("Seat released successfully");
+      setSelectedSeatId("");
+      void refetchStudent();
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.detail(studentId) });
+      queryClient.invalidateQueries({ queryKey: ["seats"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
+      onSuccess?.();
+    },
+    onError: (err) => {
+      toast.error(err instanceof ApiClientError ? err.message : "Seat release failed");
+    },
+  });
 
   const changeMutation = useMutation({
     mutationFn: () =>
@@ -202,9 +233,10 @@ export function ChangeStudentPlanDialog({ student, onSuccess }: ChangeStudentPla
         <DialogHeader className="shrink-0 border-b border-border/60 bg-muted/20 px-4 py-3 sm:px-6 sm:py-4">
           <DialogTitle>Change plan</DialogTitle>
           <DialogDescription>
-            {student.fullName}
-            {student.plan?.name ? ` — current: ${student.plan.name}` : ""}
-            {student.seat ? ` · Seat ${student.seat.seatNumber}` : ""}
+            {activeStudent.fullName}
+            {activeStudent.plan?.name ? ` — current: ${activeStudent.plan.name}` : ""}
+            {formerSeatNumber ? ` · Seat ${formerSeatNumber}` : ""}
+        
           </DialogDescription>
         </DialogHeader>
 
@@ -278,17 +310,39 @@ export function ChangeStudentPlanDialog({ student, onSuccess }: ChangeStudentPla
               ) : null}
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <Label>Seat availability</Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedSeatId("")}
-                    disabled={!selectedSeatId}
-                  >
-                    Clear
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {hasActiveSeat && formerSeatNumber && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => releaseSeatMutation.mutate()}
+                        disabled={releaseSeatMutation.isPending || changeMutation.isPending}
+                      >
+                        <Unlock className="h-4 w-4 mr-1" />
+                        {releaseSeatMutation.isPending ? "Releasing…" : `Release seat ${formerSeatNumber}`}
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedSeatId("")}
+                      disabled={!selectedSeatId}
+                    >
+                      Clear selection
+                    </Button>
+                  </div>
                 </div>
+               
+                {hasActiveSeat && selectedSeatId === currentSeatId && currentSeatId && (
+                  <p className="text-xs text-muted-foreground">
+                    Same seat rakhni ho to release ki zaroorat nahi — seedha plan change kar sakte hain.
+                    Vacant dikhane ke liye pehle &quot;Release seat&quot; dabayein.
+                  </p>
+                )}
                 {availabilityLoading && <LoadingState />}
                 {availabilityError && (
                   <ErrorState message="Could not load seat availability" />
@@ -322,7 +376,7 @@ export function ChangeStudentPlanDialog({ student, onSuccess }: ChangeStudentPla
             Cancel
           </Button>
           <Button
-            disabled={!canSubmit || changeMutation.isPending}
+            disabled={!canSubmit || changeMutation.isPending || releaseSeatMutation.isPending}
             onClick={() => changeMutation.mutate()}
           >
             {changeMutation.isPending ? "Saving…" : "Confirm plan change"}
