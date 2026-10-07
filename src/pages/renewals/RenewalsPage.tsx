@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock, History, Users } from "lucide-react";
+import { Clock, History, Hourglass, Users } from "lucide-react";
 import { renewalsService, studentsService } from "@/api/services";
 import { queryKeys } from "@/lib/queryKeys";
 import { useBranchContext } from "@/hooks/useBranchContext";
@@ -29,7 +29,7 @@ import {
   getDueStudentColumns,
   type DueStudentRow,
 } from "@/features/renewals/due-student-table-columns";
-import { getRenewalId, RENEWAL_STATUSES } from "@/lib/renewal";
+import { daysOverdue, getRenewalId, RENEWAL_STATUSES } from "@/lib/renewal";
 import { getStudentId } from "@/lib/student";
 import { isWithinDateRange } from "@/lib/dateRange";
 import { exportToCsv } from "@/lib/export";
@@ -40,18 +40,18 @@ import { toast } from "sonner";
 
 const HISTORY_STATUSES = new Set(["completed", "cancelled"]);
 const PENDING_RENEWAL_STATUSES = new Set(["pending", "partial"]);
+const DUE_TABLE_SORTING = [{ id: "endDate", desc: false }];
 
 export default function RenewalsPage() {
   const queryClient = useQueryClient();
   const { branchQuery, requiresBranchSelection } = useBranchContext();
-  const [tab, setTab] = useState("due");
+  const [tab, setTab] = useState("overdue");
   const [cancelRenewalId, setCancelRenewalId] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [historyStatus, setHistoryStatus] = useState<string>("all");
-  const [dueTypeFilter, setDueTypeFilter] = useState<"all" | "expiring" | "overdue">("all");
 
   const listEnabled = !requiresBranchSelection;
 
@@ -72,44 +72,37 @@ export default function RenewalsPage() {
     enabled: listEnabled && tab === "history",
   });
 
-  const overdueQuery = useQuery({
-    queryKey: queryKeys.students.list({
+  const renewalDueParams = useMemo(
+    () => ({
       ...branchQuery,
-      membership: "overdue",
-      limit: 100,
+      membership: "inactive",
       sortBy: "endDate",
-      sortOrder: "asc",
+      sortOrder: "desc" as const,
     }),
-    queryFn: () =>
-      studentsService.list({
-        ...branchQuery,
-        membership: "overdue",
-        limit: 100,
-        sortBy: "endDate",
-        sortOrder: "asc",
-      }),
+    [branchQuery]
+  );
+
+  const expiringParams = useMemo(
+    () => ({
+      ...branchQuery,
+      membership: "expiring_soon",
+      expiringInDays: 30,
+      sortBy: "endDate",
+      sortOrder: "asc" as const,
+    }),
+    [branchQuery]
+  );
+
+  const renewalDueQuery = useQuery({
+    queryKey: queryKeys.students.list({ ...renewalDueParams, scope: "renewals-due" }),
+    queryFn: () => studentsService.listAll(renewalDueParams),
     enabled: listEnabled,
   });
 
   const expiringQuery = useQuery({
-    queryKey: queryKeys.students.list({
-      ...branchQuery,
-      membership: "expiring_soon",
-      expiringInDays: 30,
-      limit: 100,
-      sortBy: "endDate",
-      sortOrder: "asc",
-    }),
-    queryFn: () =>
-      studentsService.list({
-        ...branchQuery,
-        membership: "expiring_soon",
-        expiringInDays: 30,
-        limit: 100,
-        sortBy: "endDate",
-        sortOrder: "asc",
-      }),
-    enabled: listEnabled && tab === "due",
+    queryKey: queryKeys.students.list({ ...expiringParams, scope: "renewals-expiring" }),
+    queryFn: () => studentsService.listAll(expiringParams),
+    enabled: listEnabled,
   });
 
   const pendingRenewalsQuery = useQuery({
@@ -138,16 +131,16 @@ export default function RenewalsPage() {
   );
 
   const expiringStudents = expiringQuery.data?.items ?? [];
-  const overdueStudents = overdueQuery.data?.items ?? [];
+  const renewalDueStudents = renewalDueQuery.data?.items ?? [];
 
-  const expiringIds = useMemo(
-    () => new Set(expiringStudents.map((s) => getStudentId(s))),
-    [expiringStudents]
+  const renewalDueIds = useMemo(
+    () => new Set(renewalDueStudents.map((s) => getStudentId(s))),
+    [renewalDueStudents]
   );
 
-  const overdueOnlyStudents = useMemo(
-    () => overdueStudents.filter((s) => !expiringIds.has(getStudentId(s))),
-    [overdueStudents, expiringIds]
+  const expiringOnlyStudents = useMemo(
+    () => expiringStudents.filter((s) => !renewalDueIds.has(getStudentId(s))),
+    [expiringStudents, renewalDueIds]
   );
 
   const pendingRenewalByStudentId = useMemo(() => {
@@ -159,15 +152,31 @@ export default function RenewalsPage() {
     return map;
   }, [pendingRenewalsQuery.data]);
 
-  const dueRows: DueStudentRow[] = useMemo(() => {
-    const rows: DueStudentRow[] = [
-      ...overdueOnlyStudents.map((s) => ({ ...s, dueType: "overdue" as const })),
-      ...expiringStudents.map((s) => ({ ...s, dueType: "expiring" as const })),
-    ];
-    if (dueTypeFilter === "expiring") return rows.filter((r) => r.dueType === "expiring");
-    if (dueTypeFilter === "overdue") return rows.filter((r) => r.dueType === "overdue");
-    return rows;
-  }, [expiringStudents, overdueOnlyStudents, dueTypeFilter]);
+  const overdueRows: DueStudentRow[] = useMemo(
+    () =>
+      renewalDueStudents
+        .map((s) => ({ ...s, dueType: "renewal_due" as const }))
+        .sort((a, b) => {
+          const byDays = daysOverdue(a.endDate) - daysOverdue(b.endDate);
+          if (byDays !== 0) return byDays;
+          const aEnd = a.endDate ? new Date(a.endDate).getTime() : 0;
+          const bEnd = b.endDate ? new Date(b.endDate).getTime() : 0;
+          return aEnd - bEnd;
+        }),
+    [renewalDueStudents]
+  );
+
+  const expiringRows: DueStudentRow[] = useMemo(
+    () =>
+      expiringOnlyStudents
+        .map((s) => ({ ...s, dueType: "expiring" as const }))
+        .sort((a, b) => {
+          const aEnd = a.endDate ? new Date(a.endDate).getTime() : 0;
+          const bEnd = b.endDate ? new Date(b.endDate).getTime() : 0;
+          return aEnd - bEnd;
+        }),
+    [expiringOnlyStudents]
+  );
 
   const filterRenewals = useMemo(
     () => (rows: Renewal[]) => {
@@ -193,16 +202,28 @@ export default function RenewalsPage() {
     [historyRenewals, filterRenewals]
   );
 
-  const filteredDueRows = useMemo(() => {
-    if (!search.trim()) return dueRows;
-    const q = search.toLowerCase();
-    return dueRows.filter(
-      (s) =>
-        s.fullName.toLowerCase().includes(q) ||
-        s.studentCode?.toLowerCase().includes(q) ||
-        s.mobileNumber?.includes(q)
-    );
-  }, [dueRows, search]);
+  const filterStudents = useMemo(
+    () => (rows: DueStudentRow[]) => {
+      if (!search.trim()) return rows;
+      const q = search.toLowerCase();
+      return rows.filter(
+        (s) =>
+          s.fullName.toLowerCase().includes(q) ||
+          s.studentCode?.toLowerCase().includes(q) ||
+          s.mobileNumber?.includes(q)
+      );
+    },
+    [search]
+  );
+
+  const filteredOverdueRows = useMemo(
+    () => filterStudents(overdueRows),
+    [filterStudents, overdueRows]
+  );
+  const filteredExpiringRows = useMemo(
+    () => filterStudents(expiringRows),
+    [filterStudents, expiringRows]
+  );
 
   const renewalColumns = useMemo(
     () =>
@@ -219,24 +240,18 @@ export default function RenewalsPage() {
         pendingRenewalByStudentId,
         onCancelRenewal: (renewal) => setCancelRenewalId(getRenewalId(renewal)),
         cancelingRenewalId: cancelRenewalMutation.isPending ? cancelRenewalId : null,
-      }),
+      }).filter((column) => column.id !== "dueType"),
     [pendingRenewalByStudentId, cancelRenewalMutation.isPending, cancelRenewalId]
   );
 
   const renewalFilterCount = [Boolean(dateFrom), Boolean(dateTo), historyStatus !== "all"].filter(
     Boolean
   ).length;
-  const dueFilterCount = dueTypeFilter !== "all" ? 1 : 0;
 
   const clearRenewalFilters = () => {
     setDateFrom("");
     setDateTo("");
     setHistoryStatus("all");
-    setSearch("");
-  };
-
-  const clearDueFilters = () => {
-    setDueTypeFilter("all");
     setSearch("");
   };
 
@@ -262,28 +277,37 @@ export default function RenewalsPage() {
     toast.success("Export started");
   };
 
-  const exportDue = async () => {
-    if (filteredDueRows.length === 0) {
+  const exportDue = async (rows: DueStudentRow[], filename: string) => {
+    if (rows.length === 0) {
       toast.error("No rows to export");
       return;
     }
     await exportToCsv(
-      filteredDueRows as unknown as Record<string, unknown>[],
+      rows as unknown as Record<string, unknown>[],
       [
         { key: "endDate", header: "End date", format: (r) => formatDate(String((r as unknown as DueStudentRow).endDate)) },
         { key: "fullName", header: "Name" },
         { key: "studentCode", header: "Code" },
         { key: "mobileNumber", header: "Mobile" },
-        { key: "dueType", header: "Due type" },
-        { key: "status", header: "Status" },
+        {
+          key: "dueType",
+          header: "Due type",
+          format: (r) =>
+            (r as unknown as DueStudentRow).dueType === "expiring" ? "Expiring soon" : "Renewal due",
+        },
+        {
+          key: "status",
+          header: "Status",
+          format: (r) => {
+            const status = (r as unknown as DueStudentRow).status;
+            return status === "inactive" || status === "expired" ? "Renewal due" : status;
+          },
+        },
       ],
-      `renewals-due-${new Date().toISOString().slice(0, 10)}.csv`
+      filename
     );
     toast.success("Export started");
   };
-
-  const dueLoading = overdueQuery.isLoading || expiringQuery.isLoading;
-  const dueError = overdueQuery.isError || expiringQuery.isError;
 
   if (requiresBranchSelection) {
     return null;
@@ -293,17 +317,32 @@ export default function RenewalsPage() {
     <div className="space-y-6 animate-in fade-in duration-300">
       <PageHeader
         title="Renewals"
-        description="Track overdue memberships and renewal history"
+        description="Renew overdue memberships, track ones expiring soon, and review history"
       />
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs
+        value={tab}
+        onValueChange={(value) => {
+          setTab(value);
+          setSearch("");
+        }}
+      >
         <TabsList className="bg-muted/50">
-          <TabsTrigger value="due" className="gap-1.5">
+          <TabsTrigger value="overdue" className="gap-1.5">
             <Clock className="h-3.5 w-3.5" />
-            Due for renewal
-            {overdueOnlyStudents.length > 0 && (
+            Overdue
+            {renewalDueStudents.length > 0 && (
               <span className="ml-1 rounded-full bg-destructive/15 px-1.5 text-xs font-medium text-destructive">
-                {overdueOnlyStudents.length}
+                {renewalDueStudents.length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="expiring" className="gap-1.5">
+            <Hourglass className="h-3.5 w-3.5" />
+            Expiring soon
+            {expiringOnlyStudents.length > 0 && (
+              <span className="ml-1 rounded-full bg-amber-500/15 px-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                {expiringOnlyStudents.length}
               </span>
             )}
           </TabsTrigger>
@@ -313,60 +352,62 @@ export default function RenewalsPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="due" className="mt-4 space-y-4">
-          {dueError && (
-            <ErrorState
-              onRetry={() => {
-                overdueQuery.refetch();
-                expiringQuery.refetch();
-              }}
-            />
-          )}
+        <TabsContent value="overdue" className="mt-4 space-y-4">
+          {renewalDueQuery.isError && <ErrorState onRetry={() => renewalDueQuery.refetch()} />}
           <DataTable
               columns={dueColumns}
-              data={filteredDueRows}
-              loading={dueLoading}
+              data={filteredOverdueRows}
+              initialSorting={DUE_TABLE_SORTING}
+              loading={renewalDueQuery.isLoading}
               enablePagination
               pageSize={15}
               stickyHeader
               getRowId={(row) => getStudentId(row)}
               emptyIcon={Users}
-              emptyTitle="No memberships due"
-              emptyDescription="Overdue or expiring students will appear here."
+              emptyTitle="No overdue memberships"
+              emptyDescription="Students whose membership has already ended will appear here."
               toolbar={(table) => (
                 <DataTableToolbar
                   table={table}
                   searchValue={search}
                   onSearchChange={setSearch}
                   searchPlaceholder="Search name, code, mobile…"
-                  onExport={exportDue}
-                  filters={
-                    <DataTableFilters>
-                      <FilterDropdown
-                        label="Filters"
-                        activeCount={dueFilterCount}
-                        onClear={clearDueFilters}
-                      >
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Due type</Label>
-                          <Select
-                            value={dueTypeFilter}
-                            onValueChange={(v) =>
-                              setDueTypeFilter(v as "all" | "expiring" | "overdue")
-                            }
-                          >
-                            <SelectTrigger className="h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All</SelectItem>
-                              <SelectItem value="overdue">Overdue</SelectItem>
-                              <SelectItem value="expiring">Expiring soon</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </FilterDropdown>
-                    </DataTableFilters>
+                  onExport={() =>
+                    exportDue(
+                      filteredOverdueRows,
+                      `renewals-overdue-${new Date().toISOString().slice(0, 10)}.csv`
+                    )
+                  }
+                />
+              )}
+            />
+        </TabsContent>
+
+        <TabsContent value="expiring" className="mt-4 space-y-4">
+          {expiringQuery.isError && <ErrorState onRetry={() => expiringQuery.refetch()} />}
+          <DataTable
+              columns={dueColumns}
+              data={filteredExpiringRows}
+              initialSorting={DUE_TABLE_SORTING}
+              loading={expiringQuery.isLoading}
+              enablePagination
+              pageSize={15}
+              stickyHeader
+              getRowId={(row) => getStudentId(row)}
+              emptyIcon={Users}
+              emptyTitle="No memberships expiring soon"
+              emptyDescription="Memberships ending within the next 30 days will appear here."
+              toolbar={(table) => (
+                <DataTableToolbar
+                  table={table}
+                  searchValue={search}
+                  onSearchChange={setSearch}
+                  searchPlaceholder="Search name, code, mobile…"
+                  onExport={() =>
+                    exportDue(
+                      filteredExpiringRows,
+                      `renewals-expiring-${new Date().toISOString().slice(0, 10)}.csv`
+                    )
                   }
                 />
               )}

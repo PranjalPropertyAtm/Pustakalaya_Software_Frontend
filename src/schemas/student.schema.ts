@@ -160,5 +160,6 @@ export function createStudentRegistrationDefaultValues(
     joiningDate: today,
     startDate: today,
     collectPaymentNow: false,
+    paymentMethod: "UPI",
   };
 }

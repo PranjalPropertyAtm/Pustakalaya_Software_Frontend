@@ -10,7 +10,16 @@ import { daysOverdue, getRenewalId } from "@/lib/renewal";
 import { formatNotificationLabel } from "@/lib/notification";
 import { StartRenewalDialog } from "@/features/renewals/StartRenewalDialog";
 
-export type DueStudentRow = Student & { dueType: "expiring" | "overdue" };
+export type DueStudentRow = Student & { dueType: "expiring" | "renewal_due" };
+
+function dueTypeLabel(dueType: DueStudentRow["dueType"]) {
+  return dueType === "expiring" ? "Expiring soon" : "Renewal due";
+}
+
+function studentStatusLabel(status: string) {
+  if (status === "inactive" || status === "expired") return "Renewal due";
+  return formatNotificationLabel(status);
+}
 
 export function getDueStudentColumns(handlers: {
   pendingRenewalByStudentId: Map<string, Renewal>;
@@ -20,7 +29,14 @@ export function getDueStudentColumns(handlers: {
   return [
     {
       id: "endDate",
-      accessorFn: (row) => (row.endDate ? new Date(row.endDate).getTime() : 0),
+      accessorFn: (row) => daysOverdue(row.endDate),
+      sortingFn: (rowA, rowB) => {
+        const byDays = daysOverdue(rowA.original.endDate) - daysOverdue(rowB.original.endDate);
+        if (byDays !== 0) return byDays;
+        const aEnd = rowA.original.endDate ? new Date(rowA.original.endDate).getTime() : 0;
+        const bEnd = rowB.original.endDate ? new Date(rowB.original.endDate).getTime() : 0;
+        return aEnd - bEnd;
+      },
       header: "End date",
       cell: ({ row }) => {
         const overdueDays = daysOverdue(row.original.endDate);
@@ -71,7 +87,7 @@ export function getDueStudentColumns(handlers: {
       header: "Due type",
       cell: ({ row }) => (
         <StatusBadge
-          label={row.original.dueType === "expiring" ? "Expiring soon" : "Overdue"}
+          label={dueTypeLabel(row.original.dueType)}
           tone={row.original.dueType === "expiring" ? "warning" : "danger"}
         />
       ),
@@ -81,7 +97,7 @@ export function getDueStudentColumns(handlers: {
       header: "Status",
       cell: ({ row }) => (
         <StatusBadge
-          label={formatNotificationLabel(row.original.status)}
+          label={studentStatusLabel(row.original.status)}
           tone={statusToneFromValue(row.original.status)}
         />
       ),

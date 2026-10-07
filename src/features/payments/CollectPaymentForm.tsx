@@ -36,7 +36,7 @@ export function CollectPaymentForm({
   const [studentLookup, setStudentLookup] = useState("");
   const [debouncedLookup, setDebouncedLookup] = useState("");
   const [resolvedStudentId, setResolvedStudentId] = useState("");
-  const [paymentMode, setPaymentMode] = useState("CASH");
+  const [paymentMode, setPaymentMode] = useState("UPI");
   const [reference, setReference] = useState("");
   const [proof, setProof] = useState<File | null>(null);
   const [proofError, setProofError] = useState<string | null>(null);
@@ -121,6 +121,7 @@ export function CollectPaymentForm({
       setRenewalId("");
       setProof(null);
       setProofError(null);
+      setPaymentMode("UPI");
       void queryClient.invalidateQueries({ queryKey: ["renewals"], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["students"], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["payments"], exact: false });

@@ -58,6 +58,7 @@ interface DataTableProps<TData, TValue> {
   onRowClick?: (row: TData) => void;
   className?: string;
   getRowId?: (row: TData) => string;
+  initialSorting?: SortingState;
   toolbar?: (table: import("@tanstack/react-table").Table<TData>) => React.ReactNode;
 }
 
@@ -125,10 +126,11 @@ function DataTableInner<TData, TValue>({
   onRowClick,
   className,
   getRowId,
+  initialSorting = [],
   toolbar,
 }: DataTableProps<TData, TValue>) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});

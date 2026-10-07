@@ -117,12 +117,17 @@ export default function StudentRegisterPage() {
   }, [totalAmount, currency, form, collectPaymentNow]);
 
   useEffect(() => {
-    if (collectPaymentNow) return;
-    setPaymentProof(null);
-    setPaymentProofError(null);
-    form.setValue("paymentMethod", undefined);
-    form.setValue("paymentReference", "");
-    form.clearErrors(["paymentMethod", "paymentAmount"]);
+    if (!collectPaymentNow) {
+      setPaymentProof(null);
+      setPaymentProofError(null);
+      form.setValue("paymentMethod", undefined);
+      form.setValue("paymentReference", "");
+      form.clearErrors(["paymentMethod", "paymentAmount"]);
+      return;
+    }
+    if (!form.getValues("paymentMethod")) {
+      form.setValue("paymentMethod", "UPI");
+    }
   }, [collectPaymentNow, form]);
 
   useEffect(() => {
