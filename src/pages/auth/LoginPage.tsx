@@ -20,7 +20,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const setSession = useAuthStore((s) => s.setSession);
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? "/dashboard";
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
 
   const {
     register,
@@ -36,7 +36,7 @@ export default function LoginPage() {
     onSuccess: (data) => {
       setSession(data.user, data.accessToken);
       toast.success("Welcome back!");
-      navigate(from, { replace: true });
+      navigate(from || "/dashboard", { replace: true });
     },
     onError: (err) => {
       const message = err instanceof ApiClientError ? err.message : "Login failed";

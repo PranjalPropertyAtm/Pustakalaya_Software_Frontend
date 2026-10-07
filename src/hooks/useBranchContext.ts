@@ -48,8 +48,7 @@ export function useBranchContext() {
     [effectiveBranchId]
   );
 
-  const requiresBranchSelection =
-    isSuperAdmin && !branchesLoading && branches.length === 0;
+  const requiresBranchSelection = isSuperAdmin && !branchesLoading && branches.length === 0;
 
   return {
     user,

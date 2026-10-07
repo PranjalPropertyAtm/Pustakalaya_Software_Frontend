@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
+import { HomeRedirect } from "@/routes/HomeRedirect";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import { PageLoader } from "@/components/common/PageLoader";
 import { ROLES } from "@/lib/constants";
@@ -28,6 +29,8 @@ const EnquiryCreatePage = lazy(() => import("@/pages/enquiries/EnquiryCreatePage
 const EnquiryDetailPage = lazy(() => import("@/pages/enquiries/EnquiryDetailPage"));
 const EnquiryReportsPage = lazy(() => import("@/pages/enquiries/EnquiryReportsPage"));
 
+const libraryStaffRoles = [ROLES.SUPER_ADMIN, ROLES.COUNSELLOR, ROLES.BRANCH_COUNSELLOR] as const;
+
 function Lazy({ children, withStats }: { children: React.ReactNode; withStats?: boolean }) {
   return (
     <Suspense fallback={<PageLoader className="min-h-[40vh]" withStats={withStats} />}>
@@ -39,7 +42,7 @@ function Lazy({ children, withStats }: { children: React.ReactNode; withStats?: 
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <Navigate to="/dashboard" replace />,
+    element: <HomeRedirect />,
   },
   {
     element: <AuthLayout />,
@@ -74,7 +77,11 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      { path: "students", element: <Lazy withStats><StudentsPage /></Lazy> },
+      { path: "students", element: (
+          <ProtectedRoute roles={[...libraryStaffRoles]}>
+            <Lazy withStats><StudentsPage /></Lazy>
+          </ProtectedRoute>
+        ) },
       {
         path: "students/register",
         element: (
@@ -83,7 +90,11 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      { path: "students/:studentId", element: <Lazy><StudentDetailPage /></Lazy> },
+      { path: "students/:studentId", element: (
+          <ProtectedRoute roles={[...libraryStaffRoles]}>
+            <Lazy><StudentDetailPage /></Lazy>
+          </ProtectedRoute>
+        ) },
       {
         path: "enquiries",
         element: (
@@ -116,13 +127,33 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      { path: "seats", element: <Lazy><SeatsPage /></Lazy> },
-      { path: "plans", element: <Lazy><PlansPage /></Lazy> },
-      { path: "payments", element: <Lazy><PaymentsPage /></Lazy> },
-      { path: "renewals", element: <Lazy withStats><RenewalsPage /></Lazy> },
-      { path: "reports", element: <Lazy withStats><ReportsPage /></Lazy> },
+      { path: "seats", element: (
+          <ProtectedRoute roles={[...libraryStaffRoles]}>
+            <Lazy><SeatsPage /></Lazy>
+          </ProtectedRoute>
+        ) },
+      { path: "plans", element: (
+          <ProtectedRoute roles={[...libraryStaffRoles]}>
+            <Lazy><PlansPage /></Lazy>
+          </ProtectedRoute>
+        ) },
+      { path: "payments", element: (
+          <ProtectedRoute roles={[...libraryStaffRoles]}>
+            <Lazy><PaymentsPage /></Lazy>
+          </ProtectedRoute>
+        ) },
+      { path: "renewals", element: (
+          <ProtectedRoute roles={[...libraryStaffRoles]}>
+            <Lazy withStats><RenewalsPage /></Lazy>
+          </ProtectedRoute>
+        ) },
+      { path: "reports", element: (
+          <ProtectedRoute roles={[...libraryStaffRoles]}>
+            <Lazy withStats><ReportsPage /></Lazy>
+          </ProtectedRoute>
+        ) },
       { path: "notifications", element: <Lazy><NotificationsPage /></Lazy> },
     ],
   },
-  { path: "*", element: <Navigate to="/dashboard" replace /> },
+  { path: "*", element: <HomeRedirect /> },
 ]);

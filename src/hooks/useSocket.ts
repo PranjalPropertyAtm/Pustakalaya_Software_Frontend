@@ -35,8 +35,6 @@ export function useSocket() {
     });
 
     socket.on("notification:new", (payload: { title?: string; message?: string; body?: string }) => {
-      // Refresh both Bell counter and Notifications list immediately.
-      // We invalidate by prefixes to avoid needing to match exact params (limit/status/etc).
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all, exact: false });
       queryClient.invalidateQueries({ queryKey: ["notifications", "unread"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["notifications", "list"], exact: false });

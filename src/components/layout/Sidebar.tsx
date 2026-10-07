@@ -24,23 +24,107 @@ import { useUiStore } from "@/stores/uiStore";
 import { ROLES } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 
-const navItems = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: "all", prefetch: () => import("@/pages/dashboard/DashboardPage") },
-  { to: "/branches", label: "Branches", icon: Building2, roles: "super", prefetch: () => import("@/pages/branches/BranchesPage") },
-  { to: "/counsellors", label: "Counsellors", icon: UserCog, roles: "super", prefetch: () => import("@/pages/counsellors/CounsellorsPage") },
-  { to: "/students", label: "Students", icon: Users, roles: "all", prefetch: () => import("@/pages/students/StudentsPage") },
-  { to: "/students/register", label: "Register", icon: UserPlus, roles: "staff", prefetch: () => import("@/pages/students/StudentRegisterPage") },
-  { to: "/enquiries", label: "Enquiries", icon: ClipboardList, roles: "staff", prefetch: () => import("@/pages/enquiries/EnquiriesPage") },
-  { to: "/seats", label: "Seat Map", icon: Grid3X3, roles: "all", prefetch: () => import("@/pages/seats/SeatsPage") },
-  { to: "/plans", label: "Plans", icon: Package, roles: "all", prefetch: () => import("@/pages/plans/PlansPage") },
-  { to: "/payments", label: "Payments", icon: CreditCard, roles: "all", prefetch: () => import("@/pages/payments/PaymentsPage") },
-  { to: "/renewals", label: "Renewals", icon: RefreshCw, roles: "all", prefetch: () => import("@/pages/renewals/RenewalsPage") },
-  { to: "/reports", label: "Reports", icon: BarChart3, roles: "all", prefetch: () => import("@/pages/reports/ReportsPage") },
-  { to: "/notifications", label: "Notifications", icon: Bell, roles: "all", prefetch: () => import("@/pages/notifications/NotificationsPage") },
+const libraryStaffRoles = [ROLES.SUPER_ADMIN, ROLES.COUNSELLOR, ROLES.BRANCH_COUNSELLOR] as const;
+
+const navItems: {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  roles: string;
+  prefetch: () => Promise<unknown>;
+}[] = [
+  {
+    to: "/dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    roles: "library",
+    prefetch: () => import("@/pages/dashboard/DashboardPage"),
+  },
+  {
+    to: "/branches",
+    label: "Branches",
+    icon: Building2,
+    roles: "super",
+    prefetch: () => import("@/pages/branches/BranchesPage"),
+  },
+  {
+    to: "/counsellors",
+    label: "Counsellors",
+    icon: UserCog,
+    roles: "super",
+    prefetch: () => import("@/pages/counsellors/CounsellorsPage"),
+  },
+  {
+    to: "/students",
+    label: "Students",
+    icon: Users,
+    roles: "library",
+    prefetch: () => import("@/pages/students/StudentsPage"),
+  },
+  {
+    to: "/students/register",
+    label: "Register",
+    icon: UserPlus,
+    roles: "staff",
+    prefetch: () => import("@/pages/students/StudentRegisterPage"),
+  },
+  {
+    to: "/enquiries",
+    label: "Enquiries",
+    icon: ClipboardList,
+    roles: "staff",
+    prefetch: () => import("@/pages/enquiries/EnquiriesPage"),
+  },
+  {
+    to: "/seats",
+    label: "Seat Map",
+    icon: Grid3X3,
+    roles: "library",
+    prefetch: () => import("@/pages/seats/SeatsPage"),
+  },
+  {
+    to: "/plans",
+    label: "Plans",
+    icon: Package,
+    roles: "library",
+    prefetch: () => import("@/pages/plans/PlansPage"),
+  },
+  {
+    to: "/payments",
+    label: "Payments",
+    icon: CreditCard,
+    roles: "library",
+    prefetch: () => import("@/pages/payments/PaymentsPage"),
+  },
+  {
+    to: "/renewals",
+    label: "Renewals",
+    icon: RefreshCw,
+    roles: "library",
+    prefetch: () => import("@/pages/renewals/RenewalsPage"),
+  },
+  {
+    to: "/reports",
+    label: "Reports",
+    icon: BarChart3,
+    roles: "library",
+    prefetch: () => import("@/pages/reports/ReportsPage"),
+  },
+  {
+    to: "/notifications",
+    label: "Notifications",
+    icon: Bell,
+    roles: "all",
+    prefetch: () => import("@/pages/notifications/NotificationsPage"),
+  },
 ];
 
 function canSee(role: string | undefined, itemRoles: string) {
+  if (!role) return false;
   if (itemRoles === "all") return true;
+  if (itemRoles === "library") {
+    return libraryStaffRoles.includes(role as (typeof libraryStaffRoles)[number]);
+  }
   if (itemRoles === "staff") {
     return role === ROLES.SUPER_ADMIN || role === ROLES.COUNSELLOR || role === ROLES.BRANCH_COUNSELLOR;
   }
@@ -71,15 +155,17 @@ function SidebarInner({ onNavigate, collapsed: collapsedProp }: SidebarProps) {
     >
       <div
         className={cn(
-          "flex h-16 items-center border-b border-border/60 px-3",
-          collapsed ? "justify-center" : "justify-between"
+          "flex items-center border-b border-border/60 px-3",
+          collapsed ? "h-16 justify-center" : "min-h-16 justify-between gap-2 py-2"
         )}
       >
         {collapsed ? (
           <Logo variant="icon" />
         ) : (
           <>
-            <Logo className="min-w-0" />
+            <div className="min-w-0 flex-1">
+              <Logo className="min-w-0" />
+            </div>
             <Button
               variant="ghost"
               size="icon"
@@ -102,30 +188,32 @@ function SidebarInner({ onNavigate, collapsed: collapsedProp }: SidebarProps) {
       )}
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
-        {visibleItems.map(({ to, label, icon: Icon, prefetch }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === "/students"}
-            onClick={onNavigate}
-            onMouseEnter={() => void prefetch()}
-            onFocus={() => void prefetch()}
-            title={collapsed ? label : undefined}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 transition-all",
-                typography.navItem,
-                collapsed && "justify-center px-2",
-                isActive
-                  ? "bg-primary/10 text-primary shadow-sm"
-                  : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-              )
-            }
-          >
-            <Icon className="h-4 w-4 shrink-0" aria-hidden />
-            {!collapsed && <span className="truncate">{label}</span>}
-          </NavLink>
-        ))}
+        {visibleItems.map(({ to, label, icon: Icon, prefetch }) => {
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === "/students"}
+              onClick={onNavigate}
+              onMouseEnter={() => void prefetch()}
+              onFocus={() => void prefetch()}
+              title={collapsed ? label : undefined}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 transition-all",
+                  typography.navItem,
+                  collapsed && "justify-center px-2",
+                  isActive
+                    ? "bg-primary/10 text-primary shadow-sm"
+                    : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                )
+              }
+            >
+              <Icon className="h-4 w-4 shrink-0" aria-hidden />
+              {!collapsed && <span className="truncate">{label}</span>}
+            </NavLink>
+          );
+        })}
       </nav>
 
       {!collapsed && (
