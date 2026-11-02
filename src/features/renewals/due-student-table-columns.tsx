@@ -17,6 +17,7 @@ function dueTypeLabel(dueType: DueStudentRow["dueType"]) {
 }
 
 function studentStatusLabel(status: string) {
+  if (status === "left") return "Left";
   if (status === "inactive" || status === "expired") return "Renewal due";
   return formatNotificationLabel(status);
 }

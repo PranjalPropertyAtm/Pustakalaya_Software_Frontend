@@ -8,7 +8,7 @@ export const STUDENTS_LIST_SEARCH_KEY = "pustakalaya.students.listSearch";
 
 export type StudentsStatusFilter = "all" | (typeof STUDENT_STATUSES)[number];
 export type StudentsStudentTypeFilter = "all" | StudentTypeFilter;
-export type StudentsMembershipFilter = "all" | "active" | "inactive" | "expiring_soon";
+export type StudentsMembershipFilter = "all" | "active" | "inactive" | "expiring_soon" | "left";
 export type StudentsDateField = "joiningDate" | "createdAt" | "startDate" | "endDate";
 export type StudentsSortBy = "createdAt" | "endDate" | "fullName";
 
@@ -44,6 +44,7 @@ const MEMBERSHIP_VALUES = new Set<StudentsMembershipFilter>([
   "active",
   "inactive",
   "expiring_soon",
+  "left",
 ]);
 
 export const DEFAULT_STUDENTS_LIST_URL_STATE: StudentsListUrlState = {

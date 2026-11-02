@@ -61,6 +61,8 @@ export interface Student {
   startDate?: string;
   endDate?: string;
   status: string;
+  leftAt?: string | null;
+  leftReason?: string;
   notes?: string;
   enrollmentType?: "NEW" | "REJOIN";
   registeredAt?: string;

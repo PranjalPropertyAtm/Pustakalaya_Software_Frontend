@@ -46,7 +46,18 @@ export const STUDENT_STATUSES = [
   "suspended",
   "cancelled",
   "inactive",
+  "left",
 ] as const;
+
+export const STUDENT_STATUS_LABELS: Record<(typeof STUDENT_STATUSES)[number], string> = {
+  active: "Active",
+  pending: "Pending",
+  expired: "Expired",
+  suspended: "Suspended",
+  cancelled: "Cancelled",
+  inactive: "Renewal due",
+  left: "Left",
+};
 
 /** Must match backend constants/enrollment.js */
 export const ENROLLMENT_TYPES = [

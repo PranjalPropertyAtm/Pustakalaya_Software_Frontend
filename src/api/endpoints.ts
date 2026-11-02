@@ -17,6 +17,7 @@ export const endpoints = {
   branchSyncSeats: (id: string) => `${API}/branches/${id}/sync-seats`,
   students: `${API}/students`,
   student: (id: string) => `${API}/students/${id}`,
+  studentStatus: (id: string) => `${API}/students/${id}/status`,
   studentMedia: (id: string) => `${API}/students/${id}/media`,
   studentRegistrationMedia: (id: string) => `${API}/students/${id}/registration-media`,
   studentSeat: (id: string) => `${API}/students/${id}/seat`,

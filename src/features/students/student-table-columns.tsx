@@ -9,6 +9,7 @@ import {
   FileText,
   CreditCard,
   Trash2,
+  UserMinus,
 } from "lucide-react";
 import type { Student } from "@/types/domain";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,16 +17,18 @@ import { StatusBadge, statusToneFromValue, type StatusTone } from "@/components/
 import { RowActionMenu } from "@/components/data-table";
 import { typography } from "@/lib/typography";
 import { cn, formatDate } from "@/lib/utils";
-import { getStudentId, getStudentSeatLabel, getEnrollmentTypeShortLabel, enrollmentTypeTone } from "@/lib/student";
+import { getStudentId, getStudentSeatLabel, getEnrollmentTypeShortLabel, enrollmentTypeTone, studentHasLeft, studentStatusLabel } from "@/lib/student";
 import { studentRenewalDisplay } from "@/lib/studentRenewal";
 import { optimizeImageUrl } from "@/lib/image";
 import { EditStudentDialog } from "@/features/students/EditStudentDialog";
 import { DeleteStudentDialog } from "@/features/students/DeleteStudentDialog";
+import { MarkStudentLeftDialog } from "@/features/students/MarkStudentLeftDialog";
 import { useAuthStore } from "@/stores/authStore";
 import { ROLES } from "@/lib/constants";
 
 function paymentStatusLabel(student: Student) {
   const s = student.status?.toLowerCase();
+  if (studentHasLeft(s)) return "—";
   if (s === "active") return "Current";
   if (s === "inactive" || s === "expired") return "Due";
   if (s === "pending") return "Pending";
@@ -37,11 +40,6 @@ function paymentStatusTone(student: Student) {
   if (label === "Current") return "success" as const;
   if (label === "Due") return "warning" as const;
   return "neutral" as const;
-}
-
-function statusLabel(status: string) {
-  if (status === "inactive" || status === "expired") return "Renewal due";
-  return status;
 }
 
 const StudentPhotoCell = memo(function StudentPhotoCell({ student }: { student: Student }) {
@@ -75,6 +73,8 @@ const StudentActionsCell = memo(function StudentActionsCell({
   const profileNav = { state: { studentsListSearch: listSearch } };
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [leftOpen, setLeftOpen] = useState(false);
+  const hasLeft = studentHasLeft(student.status);
   const isSuperAdmin = useAuthStore((s) => s.user?.role === ROLES.SUPER_ADMIN);
 
   return (
@@ -82,6 +82,9 @@ const StudentActionsCell = memo(function StudentActionsCell({
       <EditStudentDialog student={student} open={editOpen} onOpenChange={setEditOpen} />
       {isSuperAdmin && (
         <DeleteStudentDialog student={student} open={deleteOpen} onOpenChange={setDeleteOpen} />
+      )}
+      {!hasLeft && (
+        <MarkStudentLeftDialog student={student} open={leftOpen} onOpenChange={setLeftOpen} />
       )}
       <RowActionMenu
         actions={[
@@ -99,8 +102,17 @@ const StudentActionsCell = memo(function StudentActionsCell({
             label: "Renew",
             icon: <RefreshCw className="mr-2 h-4 w-4" />,
             onClick: () => navigate("/renewals"),
-            disabled: student.status === "active",
+            disabled: student.status === "active" || hasLeft,
           },
+          ...(!hasLeft
+            ? [
+                {
+                  label: "Mark as left",
+                  icon: <UserMinus className="mr-2 h-4 w-4" />,
+                  onClick: () => setLeftOpen(true),
+                },
+              ]
+            : []),
           {
             label: "Change seat",
             icon: <Armchair className="mr-2 h-4 w-4" />,
@@ -289,7 +301,7 @@ export function useStudentColumns(listSearch = ""): ColumnDef<Student>[] {
       header: "Status",
       cell: ({ row }) => (
         <StatusBadge
-          label={statusLabel(row.original.status)}
+          label={studentStatusLabel(row.original.status)}
           tone={statusToneFromValue(row.original.status)}
         />
       ),

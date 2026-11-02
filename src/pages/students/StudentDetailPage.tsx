@@ -9,6 +9,7 @@ import {
   MapPin,
   Phone,
   User,
+  UserMinus,
   Armchair,
   CreditCard,
   FileText,
@@ -28,7 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_CURRENCY } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { formatParentContact, getEnrollmentTypeLabel } from "@/lib/student";
+import { formatParentContact, getEnrollmentTypeLabel, studentHasLeft, studentStatusLabel } from "@/lib/student";
 import { studentRenewalDisplay } from "@/lib/studentRenewal";
 import { StatusBadge, type StatusTone } from "@/components/shared/StatusBadge";
 import { PaymentHistoryList } from "@/components/payments/PaymentHistoryList";
@@ -36,6 +37,7 @@ import { ChangeStudentSeatDialog } from "@/features/students/ChangeStudentSeatDi
 import { ChangeStudentPlanDialog } from "@/features/students/ChangeStudentPlanDialog";
 import { EditStudentDialog } from "@/features/students/EditStudentDialog";
 import { DeleteStudentDialog } from "@/features/students/DeleteStudentDialog";
+import { MarkStudentLeftDialog } from "@/features/students/MarkStudentLeftDialog";
 import { useAuthStore } from "@/stores/authStore";
 import { ROLES } from "@/lib/constants";
 import { resolveStudentDetailReturnPath } from "@/lib/studentsListUrl";
@@ -59,6 +61,7 @@ export default function StudentDetailPage() {
   const { studentId = "" } = useParams();
   const isSuperAdmin = useAuthStore((s) => s.user?.role === ROLES.SUPER_ADMIN);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [leftOpen, setLeftOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const {
@@ -144,6 +147,20 @@ export default function StudentDetailPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <EditStudentDialog student={student} onSuccess={refetch} />
+            {!studentHasLeft(student.status) && (
+              <>
+                <MarkStudentLeftDialog
+                  student={student}
+                  open={leftOpen}
+                  onOpenChange={setLeftOpen}
+                  onLeft={refetch}
+                />
+                <Button variant="outline" size="sm" onClick={() => setLeftOpen(true)}>
+                  <UserMinus className="h-4 w-4 mr-1" />
+                  Mark as left
+                </Button>
+              </>
+            )}
             {isSuperAdmin && (
               <>
                 <DeleteStudentDialog
@@ -167,11 +184,13 @@ export default function StudentDetailPage() {
               }
               className="text-sm"
             >
-              {student.status === "inactive" || student.status === "expired"
-                ? "Inactive (renewal due)"
-                : student.status}
+              {studentHasLeft(student.status)
+                ? "Left"
+                : student.status === "inactive" || student.status === "expired"
+                  ? "Inactive (renewal due)"
+                  : studentStatusLabel(student.status)}
             </Badge>
-            {membership.label !== "—" && (
+            {!studentHasLeft(student.status) && membership.label !== "—" && (
               <StatusBadge label={membership.label} tone={membershipTone} className="text-sm" />
             )}
           </div>
@@ -219,6 +238,13 @@ export default function StudentDetailPage() {
                 ) : undefined
               }
             />
+            {studentHasLeft(student.status) && (
+              <DetailRow
+                label="Left on"
+                value={student.leftAt ? formatDate(student.leftAt) : "—"}
+              />
+            )}
+            {student.leftReason && <DetailRow label="Reason for leaving" value={student.leftReason} />}
             {student.notes && (
               <DetailRow label="Notes" value={<span className="whitespace-pre-wrap">{student.notes}</span>} />
             )}
@@ -236,10 +262,16 @@ export default function StudentDetailPage() {
             <DetailRow label="Branch" value={student.branch?.name} />
             <DetailRow label="Plan" value={student.plan?.name} />
             <DetailRow label="Seat" value={student.seat ? `Seat ${student.seat.seatNumber}` : undefined} />
-            <div className="flex flex-wrap gap-0">
-              <ChangeStudentSeatDialog student={student} onSuccess={refetch} />
-              <ChangeStudentPlanDialog student={student} onSuccess={refetch} />
-            </div>
+            {studentHasLeft(student.status) ? (
+              <p className="text-xs text-muted-foreground pt-1">
+                This student has left. Their seat was released, and open renewals, reminders, and alerts were cleared.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-0">
+                <ChangeStudentSeatDialog student={student} onSuccess={refetch} />
+                <ChangeStudentPlanDialog student={student} onSuccess={refetch} />
+              </div>
+            )}
             {(student.status === "inactive" || student.status === "expired") && (
               <p className="text-xs text-muted-foreground pt-1">
                 Renew membership before changing plan or seat.
@@ -247,7 +279,7 @@ export default function StudentDetailPage() {
             )}
             <DetailRow label="Schedule" value={schedule || undefined} />
             <DetailRow label="Joining" value={student.joiningDate ? formatDate(student.joiningDate) : undefined} />
-            {membership.label !== "—" && (
+            {!studentHasLeft(student.status) && membership.label !== "—" && (
               <DetailRow
                 label="Membership"
                 value={

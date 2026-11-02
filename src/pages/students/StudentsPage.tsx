@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Users, UserCheck, UserX, Clock } from "lucide-react";
+import { Plus, Users, UserCheck, UserX, UserMinus, Clock } from "lucide-react";
 import { studentsService, plansService } from "@/api/services";
 import { queryKeys } from "@/lib/queryKeys";
 import { useBranchContext } from "@/hooks/useBranchContext";
@@ -24,7 +24,7 @@ import { exportToCsv } from "@/lib/export";
 import { getStudentId, getEnrollmentTypeLabel } from "@/lib/student";
 import { getPlanId, getPlanLabel } from "@/lib/plan";
 import { formatDate } from "@/lib/utils";
-import { STUDENT_STATUSES, STUDENT_TYPE_FILTERS } from "@/lib/constants";
+import { STUDENT_STATUSES, STUDENT_STATUS_LABELS, STUDENT_TYPE_FILTERS } from "@/lib/constants";
 import { studentTypeToListParams, membershipToListParams, DEFAULT_STUDENTS_LIST_URL_STATE, type StudentsMembershipFilter } from "@/lib/studentsListUrl";
 import {
   Select,
@@ -116,7 +116,7 @@ export default function StudentsPage() {
     [branchQuery]
   );
 
-  const [totalSummary, activeSummary, dueSummary, expiringSummary] = useQueries({
+  const [totalSummary, activeSummary, dueSummary, expiringSummary, leftSummary] = useQueries({
     queries: [
       {
         queryKey: queryKeys.students.list(countParams()),
@@ -141,6 +141,11 @@ export default function StudentsPage() {
           studentsService.list(countParams({ membership: "expiring_soon", expiringInDays: 7 })),
         ...listQueryOptions,
       },
+      {
+        queryKey: queryKeys.students.list(countParams({ membership: "left" })),
+        queryFn: () => studentsService.list(countParams({ membership: "left" })),
+        ...listQueryOptions,
+      },
     ],
   });
 
@@ -152,6 +157,7 @@ export default function StudentsPage() {
     active: activeSummary.data?.pagination?.total ?? 0,
     due: dueSummary.data?.pagination?.total ?? 0,
     expiring: expiringSummary.data?.pagination?.total ?? 0,
+    left: leftSummary.data?.pagination?.total ?? 0,
   };
 
   const filterCount = [
@@ -246,7 +252,7 @@ export default function StudentsPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatsCard
           title="Total students"
           value={summaryTotals.total}
@@ -278,6 +284,14 @@ export default function StudentsPage() {
           accent="neutral"
           active={membership === "expiring_soon"}
           onClick={() => handleMembershipCardClick("expiring_soon")}
+        />
+        <StatsCard
+          title="Left"
+          value={summaryTotals.left}
+          icon={UserMinus}
+          accent="neutral"
+          active={membership === "left"}
+          onClick={() => handleMembershipCardClick("left")}
         />
       </div>
 
@@ -392,7 +406,7 @@ export default function StudentsPage() {
                               <SelectItem value="all">Any</SelectItem>
                               {STUDENT_STATUSES.map((s) => (
                                 <SelectItem key={s} value={s}>
-                                  {s}
+                                  {STUDENT_STATUS_LABELS[s]}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -453,8 +467,12 @@ export default function StudentsPage() {
               })
             }
             emptyIcon={Users}
-            emptyTitle="No students found"
-            emptyDescription="Try different filters or register a new student."
+            emptyTitle={membership === "left" ? "No students have left" : "No students found"}
+            emptyDescription={
+              membership === "left"
+                ? "Students you mark as left show up here and stay out of the total count."
+                : "Try different filters or register a new student."
+            }
             serverPagination={{
               pageIndex,
               pageSize,

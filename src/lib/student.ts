@@ -46,3 +46,14 @@ export function getEnrollmentTypeShortLabel(enrollmentType?: Student["enrollment
 export function enrollmentTypeTone(enrollmentType?: Student["enrollmentType"]): StatusTone {
   return enrollmentType === "REJOIN" ? "info" : "primary";
 }
+
+export function studentHasLeft(status?: string | null): boolean {
+  return status === "left";
+}
+
+export function studentStatusLabel(status?: string | null): string {
+  if (!status) return "—";
+  if (status === "left") return "Left";
+  if (status === "inactive" || status === "expired") return "Renewal due";
+  return status;
+}
