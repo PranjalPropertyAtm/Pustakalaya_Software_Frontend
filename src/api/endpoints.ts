@@ -23,6 +23,7 @@ export const endpoints = {
   studentSeat: (id: string) => `${API}/students/${id}/seat`,
   studentSeatRelease: (id: string) => `${API}/students/${id}/seat/release`,
   studentPlan: (id: string) => `${API}/students/${id}/plan`,
+  studentBranch: (id: string) => `${API}/students/${id}/branch`,
   studentRegistrations: (id: string) => `${API}/students/${id}/registrations`,
   studentReceipts: `${API}/students/receipts`,
   studentReceipt: (studentId: string, receiptId: string) =>

@@ -10,6 +10,7 @@ import {
   CreditCard,
   Trash2,
   UserMinus,
+  Building2,
 } from "lucide-react";
 import type { Student } from "@/types/domain";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,6 +24,7 @@ import { optimizeImageUrl } from "@/lib/image";
 import { EditStudentDialog } from "@/features/students/EditStudentDialog";
 import { DeleteStudentDialog } from "@/features/students/DeleteStudentDialog";
 import { MarkStudentLeftDialog } from "@/features/students/MarkStudentLeftDialog";
+import { TransferStudentBranchDialog } from "@/features/students/TransferStudentBranchDialog";
 import { useAuthStore } from "@/stores/authStore";
 import { ROLES } from "@/lib/constants";
 
@@ -74,8 +76,10 @@ const StudentActionsCell = memo(function StudentActionsCell({
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [leftOpen, setLeftOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
   const hasLeft = studentHasLeft(student.status);
   const isSuperAdmin = useAuthStore((s) => s.user?.role === ROLES.SUPER_ADMIN);
+  const canTransfer = isSuperAdmin && student.status === "active";
 
   return (
     <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
@@ -85,6 +89,14 @@ const StudentActionsCell = memo(function StudentActionsCell({
       )}
       {!hasLeft && (
         <MarkStudentLeftDialog student={student} open={leftOpen} onOpenChange={setLeftOpen} />
+      )}
+      {canTransfer && (
+        <TransferStudentBranchDialog
+          student={student}
+          open={transferOpen}
+          onOpenChange={setTransferOpen}
+          showTrigger={false}
+        />
       )}
       <RowActionMenu
         actions={[
@@ -110,6 +122,15 @@ const StudentActionsCell = memo(function StudentActionsCell({
                   label: "Mark as left",
                   icon: <UserMinus className="mr-2 h-4 w-4" />,
                   onClick: () => setLeftOpen(true),
+                },
+              ]
+            : []),
+          ...(canTransfer
+            ? [
+                {
+                  label: "Transfer branch",
+                  icon: <Building2 className="mr-2 h-4 w-4" />,
+                  onClick: () => setTransferOpen(true),
                 },
               ]
             : []),

@@ -58,6 +58,8 @@ export const studentsService = {
     unwrap<Student>(apiClient.post(endpoints.studentSeatRelease(id))),
   setStatus: (id: string, body: { status: string; reason?: string }) =>
     unwrap<Student>(apiClient.patch(endpoints.studentStatus(id), body)),
+  transferBranch: (id: string, body: { branchId: string; seatId: string; reason?: string }) =>
+    unwrap<Student>(apiClient.patch(endpoints.studentBranch(id), body)),
   changePlan: (
     id: string,
     body: {

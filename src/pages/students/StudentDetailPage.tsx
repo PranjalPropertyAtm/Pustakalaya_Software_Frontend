@@ -35,6 +35,7 @@ import { StatusBadge, type StatusTone } from "@/components/shared/StatusBadge";
 import { PaymentHistoryList } from "@/components/payments/PaymentHistoryList";
 import { ChangeStudentSeatDialog } from "@/features/students/ChangeStudentSeatDialog";
 import { ChangeStudentPlanDialog } from "@/features/students/ChangeStudentPlanDialog";
+import { TransferStudentBranchDialog } from "@/features/students/TransferStudentBranchDialog";
 import { EditStudentDialog } from "@/features/students/EditStudentDialog";
 import { DeleteStudentDialog } from "@/features/students/DeleteStudentDialog";
 import { MarkStudentLeftDialog } from "@/features/students/MarkStudentLeftDialog";
@@ -270,6 +271,9 @@ export default function StudentDetailPage() {
               <div className="flex flex-wrap gap-0">
                 <ChangeStudentSeatDialog student={student} onSuccess={refetch} />
                 <ChangeStudentPlanDialog student={student} onSuccess={refetch} />
+                {isSuperAdmin && (
+                  <TransferStudentBranchDialog student={student} onSuccess={refetch} />
+                )}
               </div>
             )}
             {(student.status === "inactive" || student.status === "expired") && (
