@@ -31,6 +31,7 @@ import { DEFAULT_CURRENCY } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { formatParentContact, getEnrollmentTypeLabel, studentHasLeft, studentStatusLabel } from "@/lib/student";
 import { studentRenewalDisplay } from "@/lib/studentRenewal";
+import { StartRenewalDialog } from "@/features/renewals/StartRenewalDialog";
 import { StatusBadge, type StatusTone } from "@/components/shared/StatusBadge";
 import { PaymentHistoryList } from "@/components/payments/PaymentHistoryList";
 import { ChangeStudentSeatDialog } from "@/features/students/ChangeStudentSeatDialog";
@@ -148,6 +149,18 @@ export default function StudentDetailPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <EditStudentDialog student={student} onSuccess={refetch} />
+            {(student.status === "inactive" || student.status === "expired") && (
+              <StartRenewalDialog
+                student={student}
+                onSuccess={refetch}
+                trigger={
+                  <Button size="sm">
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    Renew
+                  </Button>
+                }
+              />
+            )}
             {!studentHasLeft(student.status) && (
               <>
                 <MarkStudentLeftDialog

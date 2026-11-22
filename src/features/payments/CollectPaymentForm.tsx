@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { paymentsService } from "@/api/services";
+import { paymentsService, renewalsService, studentsService } from "@/api/services";
+import { useBranchContext } from "@/hooks/useBranchContext";
 import { queryKeys } from "@/lib/queryKeys";
+import { getRenewalId } from "@/lib/renewal";
 import { FileUploadField } from "@/components/forms/FileUploadField";
 import { FormField } from "@/components/forms/FormField";
 import { Button } from "@/components/ui/button";
@@ -13,9 +15,15 @@ import { Badge } from "@/components/ui/badge";
 import { ApiClientError } from "@/api/client";
 import { typography } from "@/lib/typography";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { formatParentContact } from "@/lib/student";
+import { formatParentContact, getStudentId } from "@/lib/student";
 import { Link } from "react-router-dom";
 import { Loader2, User, ArrowLeft } from "lucide-react";
+
+function isDirectStudentLookup(value: string) {
+  const trimmed = value.trim();
+  if (/^[0-9a-fA-F]{24}$/.test(trimmed)) return true;
+  return /^STU-[A-Z0-9]+-\d{4}-\d+$/i.test(trimmed);
+}
 
 interface CollectPaymentFormProps {
   onSuccess?: () => void;
@@ -33,6 +41,7 @@ export function CollectPaymentForm({
   initialRenewalId,
 }: CollectPaymentFormProps) {
   const queryClient = useQueryClient();
+  const { branchQuery } = useBranchContext();
   const [studentLookup, setStudentLookup] = useState("");
   const [debouncedLookup, setDebouncedLookup] = useState("");
   const [resolvedStudentId, setResolvedStudentId] = useState("");
@@ -66,7 +75,27 @@ export function CollectPaymentForm({
     }
   }, [debouncedLookup]);
 
+  const directLookup = isDirectStudentLookup(debouncedLookup);
   const renewalIdForSummary = initialRenewalId?.trim() || renewalId || undefined;
+
+  const { data: nameMatches, isFetching: namesFetching } = useQuery({
+    queryKey: queryKeys.students.list({
+      ...branchQuery,
+      search: debouncedLookup,
+      limit: 8,
+      page: 1,
+      scope: "collect-payment",
+    }),
+    queryFn: () =>
+      studentsService.list({
+        ...branchQuery,
+        search: debouncedLookup,
+        limit: 8,
+        page: 1,
+      }),
+    enabled: debouncedLookup.length >= 2 && !directLookup,
+    retry: false,
+  });
 
   const {
     data: summary,
@@ -76,11 +105,15 @@ export function CollectPaymentForm({
   } = useQuery({
     queryKey: queryKeys.payments.studentSummary(debouncedLookup, renewalIdForSummary),
     queryFn: () => paymentsService.getSummary(debouncedLookup, renewalIdForSummary),
-    enabled: debouncedLookup.length >= 3,
+    enabled: directLookup && debouncedLookup.length >= 3,
     retry: false,
   });
 
-  const collectAmount = summary?.suggestedAmount ?? null;
+  const earlyPayment =
+    summary?.suggestedAmount == null && summary?.earlyPayment?.amount
+      ? summary.earlyPayment
+      : null;
+  const collectAmount = summary?.suggestedAmount ?? earlyPayment?.amount ?? null;
   const canCollect = Boolean(resolvedStudentId && collectAmount != null && collectAmount > 0);
 
   useEffect(() => {
@@ -98,18 +131,29 @@ export function CollectPaymentForm({
   }, [summary, initialRenewalId]);
 
   const mutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (collectAmount == null) {
         throw new Error("No payable amount for this student");
       }
+      let renewalToCharge = renewalId;
+      let amount = collectAmount;
+      if (!renewalToCharge && earlyPayment) {
+        const renewal = await renewalsService.initiate({ studentId: resolvedStudentId });
+        renewalToCharge = getRenewalId(renewal);
+        if (renewal.balanceDue != null && renewal.balanceDue > 0) {
+          amount = renewal.balanceDue;
+        } else if (renewal.expectedAmount != null) {
+          amount = renewal.expectedAmount;
+        }
+      }
       const fd = new FormData();
       fd.append("studentId", resolvedStudentId);
-      fd.append("amount", String(collectAmount));
+      fd.append("amount", String(amount));
       fd.append("paymentMode", paymentMode);
       if (summary?.currency) fd.append("currency", summary.currency);
       const ref = reference.trim();
       if (ref) fd.append("paymentReference", ref);
-      if (renewalId) fd.append("renewalId", renewalId);
+      if (renewalToCharge) fd.append("renewalId", renewalToCharge);
       if (proof) fd.append("paymentProof", proof);
       return paymentsService.collect(fd);
     },
@@ -127,14 +171,18 @@ export function CollectPaymentForm({
       void queryClient.invalidateQueries({ queryKey: ["payments"], exact: false });
       onSuccess?.();
     },
-    onError: (err) =>
-      toast.error(err instanceof ApiClientError ? err.message : "Payment failed"),
+    onError: (err) => {
+      void queryClient.invalidateQueries({ queryKey: ["payments"], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["renewals"], exact: false });
+      toast.error(err instanceof ApiClientError ? err.message : "Payment failed");
+    },
   });
 
   const lookupHint =
-    debouncedLookup.length > 0 && debouncedLookup.length < 3
-      ? "Type at least 3 characters to search"
+    debouncedLookup.length === 1
+      ? "Type at least 2 characters to search"
       : undefined;
+  const matches = nameMatches?.items ?? [];
 
   return (
     <div className="max-w-lg space-y-3">
@@ -159,26 +207,67 @@ export function CollectPaymentForm({
       </CardHeader>
       <CardContent className="space-y-4">
         <FormField
-          label="Student ID / code"
+          label="Student"
           required
-          hint={lookupHint ?? "e.g. STU-ABCD-2026-00001 or database ID"}
+          hint={lookupHint ?? "Search by name, mobile, or student code"}
         >
           <Input
-            placeholder="Student code or ID"
+            placeholder="Name, mobile, or student code"
             value={studentLookup}
             onChange={(e) => setStudentLookup(e.target.value)}
             onBlur={(e) => setStudentLookup(e.target.value.trim())}
           />
         </FormField>
 
-        {isFetching && debouncedLookup.length >= 3 && (
+        {!directLookup && debouncedLookup.length >= 2 && (
+          <div className="rounded-lg border border-border divide-y">
+            {namesFetching && (
+              <p className="text-sm text-muted-foreground flex items-center gap-2 p-3">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Searching students…
+              </p>
+            )}
+            {!namesFetching && matches.length === 0 && (
+              <p className="text-sm text-muted-foreground p-3">No student found with that name.</p>
+            )}
+            {matches.map((student) => {
+              const id = getStudentId(student);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-muted/60"
+                  onClick={() => {
+                    const code = student.studentCode || id;
+                    setStudentLookup(code);
+                    setDebouncedLookup(code);
+                  }}
+                >
+                  <span>
+                    <span className="font-medium">{student.fullName}</span>
+                    <span className="block text-muted-foreground">
+                      {student.studentCode}
+                      {student.mobileNumber ? ` · ${student.mobileNumber}` : ""}
+                      {student.branch?.name ? ` · ${student.branch.name}` : ""}
+                    </span>
+                  </span>
+                  <Badge variant={student.status === "active" ? "success" : "outline"}>
+                    {student.status}
+                  </Badge>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {isFetching && directLookup && debouncedLookup.length >= 3 && (
           <p className="text-sm text-muted-foreground flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading student details…
           </p>
         )}
 
-        {isError && debouncedLookup.length >= 3 && (
+        {isError && directLookup && debouncedLookup.length >= 3 && (
           <p className="text-sm text-destructive">
             {error instanceof ApiClientError ? error.message : "Student not found"}
           </p>
@@ -232,7 +321,19 @@ export function CollectPaymentForm({
                 {formatCurrency(summary.suggestedAmount, summary.currency)}
               </p>
             )}
-            {summary.suggestedAmount == null && (
+            {earlyPayment && (
+              <div className="space-y-1 pt-1 border-t border-border/60">
+                <p className="text-sm font-medium text-primary">
+                  Next term fee: {formatCurrency(earlyPayment.amount, earlyPayment.currency || summary.currency)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Current membership is not due yet. This full fee is for the next term
+                  {earlyPayment.newStartDate ? `, starting ${formatDate(earlyPayment.newStartDate)}` : ""}
+                  {earlyPayment.newEndDate ? ` until ${formatDate(earlyPayment.newEndDate)}` : ""}.
+                </p>
+              </div>
+            )}
+            {summary.suggestedAmount == null && !earlyPayment && (
               <p className="text-sm text-muted-foreground pt-1 border-t border-border/60">
                 No payment is due for this student.
               </p>
@@ -257,7 +358,9 @@ export function CollectPaymentForm({
             required
             hint={
               canCollect
-                ? (summary.suggestedAmountLabel ?? "Fixed amount based on pending renewal or registration fee")
+                ? earlyPayment
+                  ? "Full fee for the next term"
+                  : (summary.suggestedAmountLabel ?? "Fixed amount based on pending renewal or registration fee")
                 : "Payment can only be recorded when an amount is due"
             }
           >

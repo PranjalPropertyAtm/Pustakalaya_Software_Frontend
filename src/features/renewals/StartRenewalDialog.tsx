@@ -40,17 +40,30 @@ export function StartRenewalDialog({
   student,
   trigger,
   onSuccess,
+  open: openProp,
+  onOpenChange,
 }: {
   student: Student;
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
   onSuccess?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const studentId = getStudentId(student);
   const branchId = student.branchId;
 
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = openProp ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    onOpenChange?.(next);
+    if (openProp === undefined) setUncontrolledOpen(next);
+  };
+  const payingEarly =
+    student.status === "active" &&
+    Boolean(student.endDate) &&
+    new Date(student.endDate as string).getTime() >= new Date().setHours(0, 0, 0, 0);
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
   const [shiftCode, setShiftCode] = useState<string | null>(null);
   const [selectedSeatId, setSelectedSeatId] = useState<string>("");
@@ -95,7 +108,11 @@ export function StartRenewalDialog({
     mutationFn: (body: Record<string, unknown>) => renewalsService.initiate(body),
     onSuccess: (renewal) => {
       const renewalId = getRenewalId(renewal);
-      toast.success("Renewal created — complete payment to activate");
+      toast.success(
+        payingEarly
+          ? "Next term created — collect the full fee to record it"
+          : "Renewal created — collect the full fee to record it"
+      );
       queryClient.invalidateQueries({ queryKey: ["renewals"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["students"], exact: false });
       onSuccess?.();
@@ -129,9 +146,10 @@ export function StartRenewalDialog({
   }, [membershipStartDate, durationMonths]);
 
   const minStartDate = useMemo(() => {
+    if (payingEarly) return computeDefaultRenewalStartDate(student.endDate);
     if (!student.joiningDate) return undefined;
     return toDateInputValue(new Date(student.joiningDate));
-  }, [student.joiningDate]);
+  }, [payingEarly, student.endDate, student.joiningDate]);
 
   useEffect(() => {
     if (!open) return;
@@ -156,13 +174,27 @@ export function StartRenewalDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent className="flex w-[calc(100vw-1.5rem)] max-w-2xl max-h-[min(90dvh,calc(100vh-2rem))] flex-col gap-0 overflow-hidden p-0">
         <DialogHeader className="shrink-0 border-b border-border/60 bg-muted/20 px-4 py-3 sm:px-6 sm:py-4">
-          <DialogTitle>Start renewal</DialogTitle>
+          <DialogTitle>{payingEarly ? "Collect next term fee" : "Start renewal"}</DialogTitle>
           <DialogDescription>
-            Choose plan and seat for <span className="font-medium text-foreground">{student.fullName}</span>
-            {student.studentCode ? ` (${student.studentCode})` : ""}
+            {payingEarly ? (
+              <>
+                Collect the full fee for{" "}
+                <span className="font-medium text-foreground">{student.fullName}</span>
+                {student.studentCode ? ` (${student.studentCode})` : ""}. The next term starts the day
+                after the current membership ends
+                {student.endDate ? ` (${formatDate(student.endDate)})` : ""}.
+              </>
+            ) : (
+              <>
+                Choose plan and seat for{" "}
+                <span className="font-medium text-foreground">{student.fullName}</span>
+                {student.studentCode ? ` (${student.studentCode})` : ""}. The full fee is collected in
+                the next step.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -326,7 +358,7 @@ export function StartRenewalDialog({
             }
             disabled={!canSubmit || startMutation.isPending}
           >
-            {startMutation.isPending ? "Creating…" : "Continue to payment"}
+            {startMutation.isPending ? "Creating…" : "Continue to full payment"}
           </Button>
         </DialogFooter>
       </DialogContent>

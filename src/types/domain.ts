@@ -220,11 +220,20 @@ export interface StudentPaymentSummary {
     parentContactName?: string;
     status: string;
     endDate?: string;
-    plan?: { id: string; name: string; durationHours?: number } | null;
+    branchId?: string;
+    plan?: { id: string; name: string; durationHours?: number; occupancyType?: string } | null;
     seat?: { id: string; seatNumber: string; label?: string } | null;
   };
   suggestedAmount: number | null;
   suggestedAmountLabel?: string | null;
+  earlyPayment?: {
+    amount: number;
+    currency?: string;
+    durationMonths: number;
+    newStartDate: string;
+    newEndDate: string;
+    label?: string;
+  } | null;
   currency: string;
   totalPaid: number;
   paymentCount: number;

@@ -25,6 +25,7 @@ import { EditStudentDialog } from "@/features/students/EditStudentDialog";
 import { DeleteStudentDialog } from "@/features/students/DeleteStudentDialog";
 import { MarkStudentLeftDialog } from "@/features/students/MarkStudentLeftDialog";
 import { TransferStudentBranchDialog } from "@/features/students/TransferStudentBranchDialog";
+import { StartRenewalDialog } from "@/features/renewals/StartRenewalDialog";
 import { useAuthStore } from "@/stores/authStore";
 import { ROLES } from "@/lib/constants";
 
@@ -77,7 +78,9 @@ const StudentActionsCell = memo(function StudentActionsCell({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [leftOpen, setLeftOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [renewOpen, setRenewOpen] = useState(false);
   const hasLeft = studentHasLeft(student.status);
+  const canRenewDue = student.status === "inactive" || student.status === "expired";
   const isSuperAdmin = useAuthStore((s) => s.user?.role === ROLES.SUPER_ADMIN);
   const canTransfer = isSuperAdmin && student.status === "active";
 
@@ -98,6 +101,9 @@ const StudentActionsCell = memo(function StudentActionsCell({
           showTrigger={false}
         />
       )}
+      {canRenewDue && (
+        <StartRenewalDialog student={student} open={renewOpen} onOpenChange={setRenewOpen} />
+      )}
       <RowActionMenu
         actions={[
           {
@@ -110,12 +116,15 @@ const StudentActionsCell = memo(function StudentActionsCell({
             icon: <Pencil className="mr-2 h-4 w-4" />,
             onClick: () => setEditOpen(true),
           },
-          {
-            label: "Renew",
-            icon: <RefreshCw className="mr-2 h-4 w-4" />,
-            onClick: () => navigate("/renewals"),
-            disabled: student.status === "active" || hasLeft,
-          },
+          ...(canRenewDue
+            ? [
+                {
+                  label: "Renew",
+                  icon: <RefreshCw className="mr-2 h-4 w-4" />,
+                  onClick: () => setRenewOpen(true),
+                },
+              ]
+            : []),
           ...(!hasLeft
             ? [
                 {
